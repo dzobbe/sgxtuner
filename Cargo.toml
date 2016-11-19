@@ -1,0 +1,22 @@
+[package]
+name = "tuner"
+version = "0.1.0"
+authors = ["Giovanni Mazzeo mazzeo.gio@gmail.com"]
+
+[[bin]]
+name = "sgxmusl-autotuner"
+
+[dependencies]
+time = "*"
+docopt = "0.6"
+rustc-serialize = "0.3" 
+rand = "0.3"
+libc = "0.2.0"
+raw-cpuid = "2.0.1"
+x86 ={path="/home/ubuntu/TUD-Work/wrapper-autoperf-tuning/tuner/rust-perfcnt/rust-x86"}
+perfcnt={path="/home/ubuntu/TUD-Work/wrapper-autoperf-tuning/tuner/rust-perfcnt"}
+ndarray = "0.6.8"
+monitor = "0.1.0"
+lazy_static = "0.1.*"
+num = "0.1"
+ansi_term = "0.9"
