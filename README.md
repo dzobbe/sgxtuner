@@ -1,5 +1,5 @@
 # sgxmusl-autotuner
-A tool for an automatic tuning of SGX Musl library parameters. It makes use of Simulated Annealing algorithm as stochastic process for the best parameter configuration search.
+A tool for automatic tuning of SGX Musl library parameters written in Rust. The application searches for the best configuration parameters using the Simulated Annealing algorithm (https://en.wikipedia.org/wiki/Simulated_annealing), a stochastic process for iterated local search.
 
 ## Requirements
 
