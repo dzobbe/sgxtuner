@@ -3,7 +3,6 @@ extern crate perfcnt;
 
 use self::perfcnt::{PerfCounter, AbstractPerfCounter};
 use self::perfcnt::linux::{PerfCounterBuilderLinux};
-use self::x86::shared::perfcnt::intel::{core_counters,uncore_counters};
 
 pub struct MeasuredCounters {
    pub value_unhalted_core: u64,
@@ -26,7 +25,7 @@ impl PerfMetrics{
 			Default::default()
 	}
 	
-	pub fn StartCounters_4_CPI(&mut self, process_pid:u32) {
+	pub fn start_counters_4_cpi(&mut self, process_pid:u32) {
 		
 		match x86::shared::perfcnt::intel::core_counters().unwrap().get(UNHALTED_CNT) {
     		Some(x) => {
@@ -67,10 +66,10 @@ impl PerfMetrics{
 	          
 	}
 	
-	pub fn StopCounters_4_CPI(&mut self){
+	pub fn stop_counters_4_cpi(&mut self){
 		
 		//Take the final counter value
-		let mut temp_4_meas = MeasuredCounters{
+		let temp_4_meas = MeasuredCounters{
 					value_unhalted_core:    self.pc_unhalted_core.as_mut().unwrap().read().expect("Can not read counter"),
 					value_ret_instructions: self.pc_ret_instructions.as_mut().unwrap().read().expect("Can not read counter")
 					};
@@ -84,7 +83,7 @@ impl PerfMetrics{
 	}  
 	
 
-	pub fn get_CPI(&mut self) -> f64 {
+	pub fn get_cpi(&mut self) -> f64 {
 		
 		let cpi: f64 =((self.final_values.as_mut().unwrap().value_unhalted_core-self.initial_values.as_mut().unwrap().value_unhalted_core)
 			   		 /(self.final_values.as_mut().unwrap().value_ret_instructions-self.initial_values.as_mut().unwrap().value_ret_instructions)) as f64;

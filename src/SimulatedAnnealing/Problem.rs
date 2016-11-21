@@ -59,13 +59,13 @@ impl Problem for ProblemInputs{
 	
 	fn initial_state(&mut self) -> Self::State{
 		println!("Started Extraction of Initial State: it takes the Parameters Configuration given in input");
-		let mut param_conf=self.params_configurator.get_initial_param_conf();
+		let param_conf=self.params_configurator.get_initial_param_conf();
 		return param_conf;
 	}
 
   	fn energy(& mut self, state: &Self::State) -> f64{
   		println!("Started Energy Evaluation: it starts the execution of the benchmark for the specific parameter configuration and evaluate the performance result");
-    	let mut perf_result=self.thread_executor.execute_test_instance(state);
+    	let perf_result=self.thread_executor.execute_test_instance(state);
     	return perf_result;
     }
 

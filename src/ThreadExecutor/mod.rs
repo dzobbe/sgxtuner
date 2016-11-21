@@ -2,23 +2,15 @@ extern crate monitor;
 extern crate time;
 extern crate ansi_term;
 
-use std::net::{TcpListener, TcpStream};
 use std::str;
-use std::mem;
-use std::path::Path;
-use std::process::{Command, Stdio, Child};
+use std::process::{Command, Stdio};
 use std::{thread,env};
-use std::sync::mpsc;
-use std::sync::mpsc::{channel,Sender,Receiver};
-use std::sync::{Arc, Mutex, Condvar};
-use std::io::prelude::*;
+use std::sync::mpsc::channel;
+use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use self::time::precise_time_ns;
 use super::PerfCounters;
 use super::MeterProxy;  
-use std::sync::RwLock;
 use self::ansi_term::Colour::{Red,Yellow};
-use std::thread::JoinHandle;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -46,7 +38,7 @@ impl ThreadExecutor {
 	**/
 	pub fn execute_test_instance(& mut self, params: &HashMap<String,u32>) -> f64 { 
 		
-		let mut perf_metrics_handler = PerfCounters::PerfMetrics::new();
+		let perf_metrics_handler = PerfCounters::PerfMetrics::new();
 			
 	    
    		/**
@@ -59,11 +51,7 @@ impl ThreadExecutor {
 		}
 		
 	 	
-	 	
-	 	
-		
-		
-			
+
 
 		/**
 		Launch Target Application
@@ -75,25 +63,27 @@ impl ThreadExecutor {
                     .spawn()
                     .expect("Failed to execute Target!"));    
         let pid_target = target_process.as_mut().unwrap().id();
-        //           thread::sleep(Duration::from_millis(1000));
+        //thread::sleep(Duration::from_millis(1000));
 
 
-/**
+
+
+		/**
 		Start MeterProxy, which will interpose between the Target and the
 		Benchmark apps to extract info on the Response Throughput
 		**/
-		let reset_lock_flag = Arc::new(RwLock::new(false));
-		let reset_lock_flag_c=reset_lock_flag.clone();
-	    let meter_proxy_c=MeterProxy::Meter::new();
+	    let meter_proxy=MeterProxy::Meter::new();
+	    let meter_proxy_c=meter_proxy.clone();
 	    let child_meter_proxy=thread::spawn(move || { 
-			meter_proxy_c.start(12347,12349,reset_lock_flag);
+			meter_proxy.start(12347,12349);
 	    });
 			
+	    
 	      
 		/**
 		Launch Benchmark Application and measure execution time
 		**/
-		let mut cloned_self=self.clone();
+		let cloned_self=self.clone();
 		let elapsed_s_mutex = Arc::new(Mutex::new(0.0));
 		let (tx, rx) = channel();
     	let (elapsed_s_mutex_c,tx_c) = (elapsed_s_mutex.clone(), tx.clone());
@@ -120,30 +110,29 @@ impl ThreadExecutor {
 
 
 		
+		
 		/**
 		The response throughput is calculated and returned
-		**/
+		**/	
 		let elapsed_time=*(elapsed_s_mutex.lock().unwrap());
 		
-		let num_responses=self.meter_proxy.num_target_responses.get() as f64;
-							println!("{}",num_responses);
-		let resp_throughput=num_responses/elapsed_time;
+		let num_bytes=meter_proxy_c.get_num_bytes() as f64;
+		let resp_rate=(num_bytes/elapsed_time)/1024.0;
 		
-		println!("{} {:?}",Red.paint("Response Throughput: "),resp_throughput);	    	
+		println!("{} {:.3} KB/s",Red.paint("Response Rate: "),resp_rate);	    	
         println!("[TARG-THREAD] Finished Waiting! Shutting down the target and cleaning resources...");
-       
-      	*reset_lock_flag_c.write().unwrap()=true;
-	  	
-	  	//
-	  	TcpStream::connect(("127.0.0.1", 12349));
+        
+        
+      	meter_proxy_c.stop_and_reset();
 	    child_meter_proxy.join();
 	    target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
 	    
         println!("Test Instance Terminated!!");
         println!("{}",Yellow.paint("==============================================================================="));	    	
         
-        thread::sleep(Duration::from_millis(1000));
-		return resp_throughput;
+        //Wait that socket file descriptors are cleaned up to avoid OS exception ("Too many open files")
+        thread::sleep(Duration::from_millis(3000));
+		return resp_rate;
 	}
 
 }

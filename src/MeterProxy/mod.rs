@@ -1,16 +1,12 @@
 extern crate libc;
 
-use std::net::{TcpListener, TcpStream,Shutdown};
-use std::sync::{Arc,Mutex,Condvar};
+use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc,Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::{thread, time};
+use std::thread;
 use std::time::Duration;
 use std::io::prelude::*;
-use std::process::{Command, Child};
-use std::sync::atomic::AtomicUsize;
 use self::libc::setrlimit;
-use std::sync::mpsc::{channel,Receiver,Sender};
-use std::sync::mpsc;
 use std::sync::RwLock;
 
 
@@ -18,21 +14,21 @@ use std::sync::RwLock;
 pub struct ConcurrentCounter(Arc<Mutex<usize>>);
 
 impl ConcurrentCounter {
-    pub fn new(val: usize) -> Self {
+    fn new(val: usize) -> Self {
         ConcurrentCounter(Arc::new(Mutex::new(val)))
     }
 
-    pub fn increment(&self) {
+    fn increment(&self, quantity: usize) {
 		let mut counter = self.0.lock().unwrap();
-		*counter = *counter + 1;
+		*counter = *counter + quantity;
     }
     
-    pub fn get(&self) -> usize {
+    fn get(&self) -> usize {
        let counter = self.0.lock().unwrap();
        *counter
     }
     
-     pub fn reset(&self) {
+    fn reset(&self) {
 		 let mut counter = self.0.lock().unwrap();
 		 *counter = 0;
     }
@@ -40,7 +36,9 @@ impl ConcurrentCounter {
 
 #[derive(Clone)]
 pub struct Meter {
-	pub num_target_responses: ConcurrentCounter
+	pub num_target_responses: ConcurrentCounter,
+	pub reset_lock_flag: Arc<RwLock<bool>>
+	
 }
 
 impl  Meter {	
@@ -48,30 +46,32 @@ impl  Meter {
 	pub fn new() -> Meter {
 		       Meter{
 		   			num_target_responses: ConcurrentCounter::new(0),
+		   			reset_lock_flag:	Arc::new(RwLock::new(false))
 		   			}
 			} 
 	
 	
-	pub fn start(&self, port_target: u16, port_proxy: u16, reset_lock_flag: Arc<RwLock<bool>>){
+	pub fn start(&self, port_target: u16, port_proxy: u16){
 		//Increase the limit of resources for sockets limits (this avoids exception: "Too many open files (os error 24)")
 		let rlim=libc::rlimit{rlim_cur: 4096, rlim_max: 4096};
 		unsafe{
 			libc::setrlimit(libc::RLIMIT_NOFILE,&rlim);
 		}
 	    
-	    let mut acceptor = TcpListener::bind("127.0.0.1:12349").unwrap();
+	    let acceptor = TcpListener::bind("127.0.0.1:12349").unwrap();
 	    let mut children = vec![];		
 					
 	    for stream in acceptor.incoming() {
-			let counter=self.num_target_responses.clone();
-			let reset_lock_flag_c=reset_lock_flag.clone();
+			let num_target_responses_c=self.num_target_responses.clone();
+			let reset_lock_flag_c=self.reset_lock_flag.clone();
+			
 			let flag_c=reset_lock_flag_c.clone();
 
 			if *flag_c.read().unwrap() == true{
-								println!("RAISED RESET FLAG");
-								//drop(acc_2);
-								return;
-								}
+					println!("Reset Flag Raised");
+					break;
+			}
+			
 			match stream {
 				Err(e) => println!("Strange connection broken: {}", e),
 				Ok(stream) => {
@@ -87,8 +87,8 @@ impl  Meter {
 								Ok(b) => Some(b)
 							};
 							
-
-						    Meter::start_pipe(stream_c, port_target, Some(header[0]), counter, reset_lock_flag_c);
+						    Meter::start_pipe(stream_c, port_target, Some(header[0]),
+						    						 num_target_responses_c, reset_lock_flag_c);
 						    drop(stream);
 						    
 						}));
@@ -100,6 +100,17 @@ impl  Meter {
 	    return;
 	}
 	
+	
+	pub fn stop_and_reset(&self){
+		*self.reset_lock_flag.write().unwrap()=true;
+		self.num_target_responses.reset();
+	  	TcpStream::connect(("127.0.0.1", 12349));
+	}
+	
+	
+	pub fn get_num_bytes(&self) -> usize{
+		return self.num_target_responses.get();
+	}
 	
 	fn start_pipe(front: TcpStream, port: u16, header: Option<u8>, counter: ConcurrentCounter, reset_lock_flag: Arc<RwLock<bool>>) {
 		let mut back = match TcpStream::connect(("127.0.0.1", 12347)) {
@@ -131,14 +142,12 @@ impl  Meter {
 		let timedOut_copy = timedOut.clone();
 
 		let reset_lock_flag_c=reset_lock_flag.clone();
-		let reset_lock_flag_c2=reset_lock_flag.clone();
-		let child_f_b=thread::spawn(move|| {
+		thread::spawn(move|| {
 			Meter::keep_copying_bench_2_targ(front, back, timedOut,reset_lock_flag);
-			
 		});
-		let child_b_f=thread::spawn(move|| {
+		
+		thread::spawn(move|| {
 			Meter::keep_copying_targ_2_bench(back_copy, front_copy, timedOut_copy, counter,reset_lock_flag_c);
-			
 		});
 		
 		
@@ -149,7 +158,6 @@ impl  Meter {
 	fn keep_copying_bench_2_targ(mut front: TcpStream, mut back: TcpStream, timedOut: Arc<AtomicBool>, reset_lock_flag: Arc<RwLock<bool>>) {
 		front.set_read_timeout(Some(Duration::new(15*60,0)));
 		let mut buf = [0; 1024];
-		let mut index=0;
 		
 		loop {	
 			
@@ -197,7 +205,6 @@ impl  Meter {
 											
 		back.set_read_timeout(Some(Duration::new(15*60,0)));
 		let mut buf = [0; 1024];
-		let mut index=0;
 
 		loop {	
 			if *reset_lock_flag.read().unwrap() == true{
@@ -208,7 +215,6 @@ impl  Meter {
 			
 			let read = match back.read(&mut buf) {
 				Err(ref err) => {
-					num_responses.increment();
 					let other = timedOut.swap(true, Ordering::AcqRel);
 					if other {
 						// the other side also timed-out / errored, so lets go
@@ -222,10 +228,11 @@ impl  Meter {
 					return; // normal errors, stop
 				},
 				Ok(r) => {
-					num_responses.increment();
 					r
 				}
-			};
+			}; 
+			num_responses.increment(read);
+			
 			
 			timedOut.store(false, Ordering::Release);
 			match front.write(&buf[0 .. read]) {

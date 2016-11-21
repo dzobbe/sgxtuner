@@ -6,8 +6,6 @@ use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use std::env;
-use std::process::Command;
 use std::collections::HashMap;
 use self::rand::Rng;
 
@@ -49,12 +47,12 @@ impl ParamsConfigurator{
 	
 	 		let file_reader = BufReader::new(&file);
 			println!("Reading SGX-MUSL Parameters from file: ");
-			for (num, line) in file_reader.lines().enumerate() {
-		    		let mut topline= line.unwrap();
+			for (_, line) in file_reader.lines().enumerate() {
+		    		let topline= line.unwrap();
 					let mut topsplit=topline.split(":");
 					
-		            let (mut var_name, mut var_value,
-		            	 mut var_lbound, mut var_ubound, mut var_step);
+		            let (var_name, var_value,
+		            	 var_lbound, var_ubound, var_step);
 						
 					match topsplit.next() {
 		    			Some(x) => var_name=x,
