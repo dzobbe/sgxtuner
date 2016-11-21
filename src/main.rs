@@ -17,28 +17,19 @@ use std::process::Command;
 use PerfCounters::PerfMetrics;
 use std::thread;
 
-// The Docopt usage string.
-const USAGE: &'static str =
-    "
-Usage:   sgxmusl-autotuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
-     --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-tp] \
-     --temp=<initialTemp> [-rf] --redFact=<tempReductionFactor> [-at] --maxAtt=<maxAttempts> \
-     [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects>							  
+//The Docopt usage string.
+const USAGE: &'static str = "
+Usage:   sgxmusl-autotuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-tp] --temp=<initialTemp> [-rf] --redFact=<tempReductionFactor> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects>							  
 Options:
-    -t,    \
-     --targ=<args>     	someoption.
+    -t,    --targ=<args>     	someoption.
     --args2targ=<args>   		arguments for target.
-    -b,    \
-     --bench=<args>     	someoption.
+    -b,    --bench=<args>     	someoption.
     --args2bench=<args>  		arguments for benchmark.
-    -ms,   \
-     --maxSteps=<args>    someoption.
+    -ms,   --maxSteps=<args>    someoption.
     -tp,   --temp=<args>     	someoption.
-    -rf,   \
-     --redFact=<args>     someoption.
+    -rf,   --redFact=<args>     someoption.
     -at,   --maxAtt=<args>     	someoption.
-    -ac,   \
-     --maxAcc=<args>     	someoption.
+    -ac,   --maxAcc=<args>     	someoption.
     -rj,   --maxRej=<args>     	someoption.  
 ";
 
