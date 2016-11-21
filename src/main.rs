@@ -9,6 +9,9 @@ mod SimulatedAnnealing;
 mod ThreadExecutor;
 mod MeterProxy;
 
+use std::sync::{Arc, Mutex, Condvar};
+use std::sync::RwLock;
+
 use docopt::Docopt;
 use std::process::Command;
 use PerfCounters::PerfMetrics;
@@ -73,8 +76,7 @@ fn main() {
 	println!("{:?}", args);
 	
 	
-	
-	
+
 	
 	/**
 	Create ParamsConfigurator useful to manage the parameters (or states) 
@@ -117,6 +119,7 @@ fn main() {
 	
 	annealing_solver.solve(&mut problem);
 	
+ 	
  	
 }
 

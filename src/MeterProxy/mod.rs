@@ -1,6 +1,6 @@
 extern crate libc;
 
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream,Shutdown};
 use std::sync::{Arc,Mutex,Condvar};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{thread, time};
@@ -23,8 +23,8 @@ impl ConcurrentCounter {
     }
 
     pub fn increment(&self) {
-		 let mut counter = self.0.lock().unwrap();
-		 *counter = *counter + 1;
+		let mut counter = self.0.lock().unwrap();
+		*counter = *counter + 1;
     }
     
     pub fn get(&self) -> usize {
@@ -60,13 +60,18 @@ impl  Meter {
 		}
 	    
 	    let mut acceptor = TcpListener::bind("127.0.0.1:12349").unwrap();
-	    let mut children = vec![];
-
+	    let mut children = vec![];		
+					
 	    for stream in acceptor.incoming() {
-	    	
 			let counter=self.num_target_responses.clone();
 			let reset_lock_flag_c=reset_lock_flag.clone();
-			
+			let flag_c=reset_lock_flag_c.clone();
+
+			if *flag_c.read().unwrap() == true{
+								println!("RAISED RESET FLAG");
+								//drop(acc_2);
+								return;
+								}
 			match stream {
 				Err(e) => println!("Strange connection broken: {}", e),
 				Ok(stream) => {
@@ -74,38 +79,25 @@ impl  Meter {
 							// connection succeeded
 							let mut stream_c=stream.try_clone().unwrap();
 		 					
-							stream_c.set_read_timeout(Some(Duration::new(3,0)));
+							stream_c.set_read_timeout(Some(Duration::new(1,0)));
 							let mut header=[0;1];
 						
 							match stream_c.read_exact(&mut header) {
 								Err(..) => None,
 								Ok(b) => Some(b)
 							};
+							
+
 						    Meter::start_pipe(stream_c, port_target, Some(header[0]), counter, reset_lock_flag_c);
+						    drop(stream);
+						    
 						}));
 						
 					}
 			}
 	    } 
-	    
-
-	    for child in children {
-	        // Wait for the thread to finish. Returns a result.
-	        let _ = child.join();
-	        println!("Joining!!");
-    	}
-	    
 	    drop(acceptor);
-	}
-
-	pub fn reset_resources(&self){
-		self.num_target_responses.reset();
-		let (tx, _): (Sender<i32>, Receiver<i32>) = mpsc::channel();
-            tx.send(5).unwrap();
-
-		//let mut needed_reset = self.reset_mutex.lock().unwrap();
-   		//*needed_reset = true;
-    	//self.reset_flag.notify_all();
+	    return;
 	}
 	
 	
@@ -142,21 +134,14 @@ impl  Meter {
 		let reset_lock_flag_c2=reset_lock_flag.clone();
 		let child_f_b=thread::spawn(move|| {
 			Meter::keep_copying_bench_2_targ(front, back, timedOut,reset_lock_flag);
+			
 		});
 		let child_b_f=thread::spawn(move|| {
 			Meter::keep_copying_targ_2_bench(back_copy, front_copy, timedOut_copy, counter,reset_lock_flag_c);
+			
 		});
 		
 		
-		loop {
-			if *reset_lock_flag_c2.read().unwrap() == true{
-				println!("RAISED RESET FLAG");
-				
-			}
-		}
-		
-		child_f_b.join();		
-		child_b_f.join();
 	}
 	
 	
@@ -166,14 +151,14 @@ impl  Meter {
 		let mut buf = [0; 1024];
 		let mut index=0;
 		
-		while *reset_lock_flag.try_read().unwrap() != true {	
+		loop {	
 			
 			if *reset_lock_flag.read().unwrap() == true{
-				println!("RAISED RESET FLAG");
 				drop(front); 
 				drop(back);
 				return;
 			}
+			
 			let read = match front.read(&mut buf) {
 				Err(ref err) => {
 					let other = timedOut.swap(true, Ordering::AcqRel);
@@ -202,6 +187,7 @@ impl  Meter {
 			};
 			
 		}
+		
 	}
 	
 	
@@ -213,13 +199,18 @@ impl  Meter {
 		let mut buf = [0; 1024];
 		let mut index=0;
 
-		while *reset_lock_flag.try_read().unwrap() != true {	
-			//println!("FLAG: {:?}",*reset_lock_flag.try_read().unwrap());
+		loop {	
+			if *reset_lock_flag.read().unwrap() == true{
+				drop(front); 
+				drop(back);
+				return;
+			}
+			
 			let read = match back.read(&mut buf) {
 				Err(ref err) => {
+					num_responses.increment();
 					let other = timedOut.swap(true, Ordering::AcqRel);
 					if other {
-						
 						// the other side also timed-out / errored, so lets go
 						drop(back);
 						drop(front);
@@ -232,7 +223,6 @@ impl  Meter {
 				},
 				Ok(r) => {
 					num_responses.increment();
-	            	
 					r
 				}
 			};
@@ -249,8 +239,6 @@ impl  Meter {
 			};
 		}
 		
-		println!("RAISED RESET FLAG");
-		drop(front); 
-		drop(back);
+		
 	}
 }

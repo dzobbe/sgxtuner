@@ -19,6 +19,7 @@ use super::MeterProxy;
 use std::sync::RwLock;
 use self::ansi_term::Colour::{Red,Yellow};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct ThreadExecutor {
@@ -57,21 +58,12 @@ impl ThreadExecutor {
 			println!("Environment Variable for {:?} set to: {:?}",param_name,param_value);
 		}
 		
-
+	 	
+	 	
+	 	
 		
 		
-		/**
-		Start MeterProxy, which will interpose between the Target and the
-		Benchmark apps to extract info on the Response Throughput
-		**/
-		let reset_lock_flag = Arc::new(RwLock::new(false));
-		let reset_lock_flag_c=reset_lock_flag.clone();
-	    let meter_proxy_c=self.meter_proxy.clone();
-	    let child_meter_proxy=thread::spawn(move || { 
-			meter_proxy_c.start(12347,12349,reset_lock_flag);
-	    });
-
-
+			
 
 		/**
 		Launch Target Application
@@ -83,9 +75,20 @@ impl ThreadExecutor {
                     .spawn()
                     .expect("Failed to execute Target!"));    
         let pid_target = target_process.as_mut().unwrap().id();
-           
+        //           thread::sleep(Duration::from_millis(1000));
 
 
+/**
+		Start MeterProxy, which will interpose between the Target and the
+		Benchmark apps to extract info on the Response Throughput
+		**/
+		let reset_lock_flag = Arc::new(RwLock::new(false));
+		let reset_lock_flag_c=reset_lock_flag.clone();
+	    let meter_proxy_c=MeterProxy::Meter::new();
+	    let child_meter_proxy=thread::spawn(move || { 
+			meter_proxy_c.start(12347,12349,reset_lock_flag);
+	    });
+			
 	      
 		/**
 		Launch Benchmark Application and measure execution time
@@ -113,11 +116,7 @@ impl ThreadExecutor {
 			    	
  					tx_c.send(()).unwrap();
 					});
-        
-        
-
 		rx.recv().unwrap();
-
 
 
 		
@@ -125,23 +124,25 @@ impl ThreadExecutor {
 		The response throughput is calculated and returned
 		**/
 		let elapsed_time=*(elapsed_s_mutex.lock().unwrap());
+		
 		let num_responses=self.meter_proxy.num_target_responses.get() as f64;
+							println!("{}",num_responses);
 		let resp_throughput=num_responses/elapsed_time;
 		
 		println!("{} {:?}",Red.paint("Response Throughput: "),resp_throughput);	    	
         println!("[TARG-THREAD] Finished Waiting! Shutting down the target and cleaning resources...");
-        //self.clean_meter_proxy_resources();
        
-       *reset_lock_flag_c.write().unwrap()=true;
-	   
-
-
-	   // child_meter_proxy.join();
+      	*reset_lock_flag_c.write().unwrap()=true;
+	  	
+	  	//
+	  	TcpStream::connect(("127.0.0.1", 12349));
+	    child_meter_proxy.join();
 	    target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
+	    
         println!("Test Instance Terminated!!");
-        
         println!("{}",Yellow.paint("==============================================================================="));	    	
         
+        thread::sleep(Duration::from_millis(1000));
 		return resp_throughput;
 	}
 
