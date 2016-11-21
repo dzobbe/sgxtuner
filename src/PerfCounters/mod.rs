@@ -1,7 +1,9 @@
+extern crate x86;
+extern crate perfcnt;
 
-use perfcnt::{PerfCounter, AbstractPerfCounter};
-use perfcnt::linux::{PerfCounterBuilderLinux};
-use x86::shared::perfcnt::intel::{core_counters,uncore_counters};
+use self::perfcnt::{PerfCounter, AbstractPerfCounter};
+use self::perfcnt::linux::{PerfCounterBuilderLinux};
+use self::x86::shared::perfcnt::intel::{core_counters,uncore_counters};
 
 pub struct MeasuredCounters {
    pub value_unhalted_core: u64,
