@@ -9,12 +9,12 @@ dependencies = [
  "monitor 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ndarray 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "perfcnt 0.3.0",
+ "perfcnt 0.3.0 (git+https://github.com/dzobbe/rust-perfcnt.git)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "raw-cpuid 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "x86 0.9.0",
+ "x86 0.9.0 (git+https://github.com/dzobbe/rust-x86.git)",
 ]
 
 [[package]]
@@ -214,13 +214,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "perfcnt"
 version = "0.3.0"
+source = "git+https://github.com/dzobbe/rust-perfcnt.git#10a208182817e3bd8c58ffeca0d3532bd5232ac6"
 dependencies = [
  "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "mmap 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "x86 0.9.0",
+ "x86 0.9.0 (git+https://github.com/dzobbe/rust-x86.git)",
 ]
 
 [[package]]
@@ -364,6 +365,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "x86"
 version = "0.9.0"
+source = "git+https://github.com/dzobbe/rust-x86.git#6f54937803f950235501715b02d26d4535582cc5"
 dependencies = [
  "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "csv 0.14.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -400,6 +402,7 @@ dependencies = [
 "checksum num-iter 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)" = "287a1c9969a847055e1122ec0ea7a5c5d6f72aad97934e131c83d5c08ab4e45c"
 "checksum num-rational 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)" = "54ff603b8334a72fbb27fe66948aac0abaaa40231b3cecd189e76162f6f38aaf"
 "checksum num-traits 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)" = "a16a42856a256b39c6d3484f097f6713e14feacd9bfb02290917904fae46c81c"
+"checksum perfcnt 0.3.0 (git+https://github.com/dzobbe/rust-perfcnt.git)" = "<none>"
 "checksum phf 0.7.18 (registry+https://github.com/rust-lang/crates.io-index)" = "971dd94df0728890a6fd7cf01b61e3f1fc84acb308175d196a9ceb2aa0e04b90"
 "checksum phf_codegen 0.7.18 (registry+https://github.com/rust-lang/crates.io-index)" = "29fa7fa119b1dd493cc17d69052281ad38767c6e5f6f29263bbd57027aee7f71"
 "checksum phf_generator 0.7.18 (registry+https://github.com/rust-lang/crates.io-index)" = "e3497bdd90ab6e6f9295d4877ac89b74dd0635304b9c89a6677f17d87bb5ef8d"
@@ -419,3 +422,4 @@ dependencies = [
 "checksum utf8-ranges 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a1ca13c08c41c9c3e04224ed9ff80461d97e121589ff27c753a16cb10830ae0f"
 "checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
 "checksum winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2d315eee3b34aca4797b2da6b13ed88266e6d612562a0c46390af8299fc699bc"
+"checksum x86 0.9.0 (git+https://github.com/dzobbe/rust-x86.git)" = "<none>"

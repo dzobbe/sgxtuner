@@ -13,8 +13,8 @@ rustc-serialize = "0.3"
 rand = "0.3"
 libc = "0.2.0"
 raw-cpuid = "2.0.1"
-x86 ={path="/home/ubuntu/TUD-Work/wrapper-autoperf-tuning/tuner/rust-perfcnt/rust-x86"}
-perfcnt={path="/home/ubuntu/TUD-Work/wrapper-autoperf-tuning/tuner/rust-perfcnt"}
+x86 ={git='https://github.com/dzobbe/rust-x86.git'}
+perfcnt={git='https://github.com/dzobbe/rust-perfcnt.git'}
 ndarray = "0.6.8"
 monitor = "0.1.0"
 lazy_static = "0.1.*"
