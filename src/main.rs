@@ -1,13 +1,32 @@
+extern crate x86;
+extern crate perfcnt;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate rand;
 extern crate libc;
+extern crate time;
+extern crate ansi_term;
+//extern crate influent;
 
 mod PerfCounters;
 mod Parameters;
 mod SimulatedAnnealing;
 mod ThreadExecutor;
 mod MeterProxy;
+
+#[derive(Debug, Clone)]
+pub enum CoolingSchedule {
+    Linear,
+    Exponential,
+    Adaptive
+}
+
+#[derive(Debug, Clone)]
+pub enum TerminationCriteria {
+	Max_Steps (u64),
+	Max_Time_Seconds (u64)
+}
+
 
 use std::sync::{Arc, Mutex, Condvar};
 use std::sync::RwLock;
@@ -16,6 +35,7 @@ use docopt::Docopt;
 use std::process::Command;
 use PerfCounters::PerfMetrics;
 use std::thread;
+
 
 //The Docopt usage string.
 const USAGE: &'static str = "
@@ -105,13 +125,16 @@ fn main() {
         params_configurator: params_config,
         thread_executor: executor,
     };
+    
     let annealing_solver = SimulatedAnnealing::Solver::Solver {
-        steps: args.flag_maxSteps,
-        initial_temperature: args.flag_temp,
-        temperature_reduction: args.flag_redFact,
+        termination_criteria: TerminationCriteria::Max_Steps(1000000),
+        min_temperature: args.flag_temp,
+        max_temperature: args.flag_redFact,
         max_attempts: args.flag_maxAtt,
         max_accepts: args.flag_maxAcc,
         max_rejects: args.flag_maxRej,
+        cooling_schedule: CoolingSchedule::Exponential
+        
     };
 
     annealing_solver.solve(&mut problem);

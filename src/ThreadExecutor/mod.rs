@@ -1,7 +1,5 @@
-extern crate monitor;
-extern crate time;
-extern crate ansi_term;
-
+use time;
+use libc;
 use std::str;
 use std::process::{Command, Stdio};
 use std::{thread, env};
@@ -10,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use super::PerfCounters;
 use super::MeterProxy;
-use self::ansi_term::Colour::{Red, Yellow};
+use ansi_term::Colour::{Red, Yellow};
 use std::time::Duration;
 
 #[derive(Clone)]

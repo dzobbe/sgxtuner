@@ -1,12 +1,11 @@
-extern crate libc;
-
+use libc;
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 use std::io::prelude::*;
-use self::libc::setrlimit;
+use libc::setrlimit;
 use std::sync::RwLock;
 
 
