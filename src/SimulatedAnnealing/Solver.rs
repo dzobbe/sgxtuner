@@ -123,6 +123,8 @@ impl Solver {
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 
+        println!("Initial Evaluation", Green.paint("[ANNEALING SOLVER]"));
+        
         let mut state = problem.initial_state();
         let mut energy = problem.energy(&state);
         let mut temperature = self.max_temperature;
@@ -141,7 +143,7 @@ impl Solver {
         	
         	elapsed_time =(time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
         	
-        	println!("{} Step Number: {:?} - Current Execution Time: {:?} s", Green.paint("[ANNEALING SOLVER]"), elapsed_steps,elapsed_time);
+        	println!("{} Step Number: {:?} - Current Execution Time: {:.2} s", Green.paint("[ANNEALING SOLVER]"), elapsed_steps,elapsed_time);
         	
             state = {
                 let next_state = problem.new_state(&state, max_steps, elapsed_steps);
