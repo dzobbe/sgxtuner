@@ -48,6 +48,7 @@ impl Cooler for StepsCooler {
 	}
     
     fn linear_cooling(&self) -> f64 {
+    	
     	return 0.0;
     	
 	}

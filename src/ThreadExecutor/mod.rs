@@ -27,7 +27,6 @@ impl ThreadExecutor {
     }
 
 
-
     /**
 	Execute an an instance of the benchmark on the target application for the specific
 	configuration of parameters. The function returns the cost result (in this case the response throughput)
@@ -43,9 +42,6 @@ impl ThreadExecutor {
         ///
         for (param_name, param_value) in params.iter() {
             env::set_var(param_name.to_string(), param_value.to_string());
-            println!("Environment Variable for {:?} set to: {:?}",
-                     param_name,
-                     param_value);
         }
 
 
@@ -60,8 +56,7 @@ impl ThreadExecutor {
             .spawn()
             .expect("Failed to execute Target!"));
         let pid_target = target_process.as_mut().unwrap().id();
-        // thread::sleep(Duration::from_millis(1000));
-
+        
 
 
 
@@ -74,6 +69,8 @@ impl ThreadExecutor {
             meter_proxy.start(12347, 12349);
         });
 
+       	//Wait for target startup
+        thread::sleep(Duration::from_millis(1000));
 
 
         /// Launch Benchmark Application and measure execution time
@@ -98,36 +95,35 @@ impl ThreadExecutor {
 
             let elapsed_ns: f64 = (end - start) as f64;
             *elapsed_s_var = elapsed_ns / 1000000000.0f64;
-
+			
             tx_c.send(()).unwrap();
         });
+        
+        println!("\nWaiting for Benchmark Completion...");
         rx.recv().unwrap();
 
 
 
-
         /// The response throughput is calculated and returned
-        ///
-
         let elapsed_time = *(elapsed_s_mutex.lock().unwrap());
 
         let num_bytes = meter_proxy_c.get_num_bytes() as f64;
         let resp_rate = (num_bytes / elapsed_time) / 1024.0;
 
         println!("{} {:.3} KB/s", Red.paint("Response Rate: "), resp_rate);
-        println!("[TARG-THREAD] Finished Waiting! Shutting down the target and cleaning \
-                  resources...");
 
 
         meter_proxy_c.stop_and_reset();
         child_meter_proxy.join();
+        drop(meter_proxy_c);
+        
         target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
-
-        println!("Test Instance Terminated!!");
+	
+        println!("Execution Terminated!!");
         println!("{}",Yellow.paint("==============================================================================="));
 
         // Wait that socket file descriptors are cleaned up to avoid OS exception ("Too many open files")
-        thread::sleep(Duration::from_millis(3000));
+        
         return resp_rate;
     }
 }

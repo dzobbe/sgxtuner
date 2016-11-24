@@ -57,22 +57,30 @@ pub struct ProblemInputs {
 impl Problem for ProblemInputs {
     type State = HashMap<String, u32>;
 
+	/**
+	Start Extraction of Initial State: it takes the Parameters Configuration 
+    given in input
+	**/
     fn initial_state(&mut self) -> Self::State {
-        println!("Started Extraction of Initial State: it takes the Parameters Configuration \
-                  given in input");
         let param_conf = self.params_configurator.get_initial_param_conf();
         return param_conf;
     }
-
+   
+    
+	/**
+	Start Energy Evaluation: it starts the execution of the benchmark for the 
+    specific parameter configuration and evaluate the performance result
+	**/
     fn energy(&mut self, state: &Self::State) -> f64 {
-        println!("Started Energy Evaluation: it starts the execution of the benchmark for the \
-                  specific parameter configuration and evaluate the performance result");
         let perf_result = self.thread_executor.execute_test_instance(state);
         return perf_result;
     }
 
+
+	/**
+	Start Extraction of New State from Neighborhood Set
+	**/
     fn new_state(&mut self, state: &Self::State, max_steps: u64, current_step: u64) -> Self::State {
-        println!("Started Extraction of New State from Neighborhood Set");
         match self.params_configurator.get_neighborhood_params(max_steps, current_step) {
             // There is a neighborhood available to return
             Some(x) => return x,

@@ -1,8 +1,6 @@
-extern crate x86;
-extern crate perfcnt;
-
-use self::perfcnt::{PerfCounter, AbstractPerfCounter};
-use self::perfcnt::linux::PerfCounterBuilderLinux;
+use x86;
+use perfcnt::{PerfCounter, AbstractPerfCounter};
+use perfcnt::linux::PerfCounterBuilderLinux;
 
 pub struct MeasuredCounters {
     pub value_unhalted_core: u64,

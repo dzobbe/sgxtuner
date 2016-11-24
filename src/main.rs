@@ -6,13 +6,17 @@ extern crate rand;
 extern crate libc;
 extern crate time;
 extern crate ansi_term;
+extern crate mio;
 //extern crate influent;
+
+
 
 mod PerfCounters;
 mod Parameters;
 mod SimulatedAnnealing;
 mod ThreadExecutor;
 mod MeterProxy;
+//mod InfluxProxy;
 
 #[derive(Debug, Clone)]
 pub enum CoolingSchedule {
@@ -39,18 +43,18 @@ use std::thread;
 
 //The Docopt usage string.
 const USAGE: &'static str = "
-Usage:   sgxmusl-autotuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-tp] --temp=<initialTemp> [-rf] --redFact=<tempReductionFactor> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects>							  
+Usage:   sgxmusl-autotuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-t] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects>							  
 Options:
-    -t,    --targ=<args>     	someoption.
-    --args2targ=<args>   		arguments for target.
-    -b,    --bench=<args>     	someoption.
-    --args2bench=<args>  		arguments for benchmark.
-    -ms,   --maxSteps=<args>    someoption.
-    -tp,   --temp=<args>     	someoption.
-    -rf,   --redFact=<args>     someoption.
-    -at,   --maxAtt=<args>     	someoption.
-    -ac,   --maxAcc=<args>     	someoption.
-    -rj,   --maxRej=<args>     	someoption.  
+    -t,    --targ=<args>     	Target Path.
+    --args2targ=<args>   		Arguments for Target.
+    -b,    --bench=<args>     	Benchmark Path.
+    --args2bench=<args>  		Arguments for Benchmark.
+    -ms,   --maxSteps=<args>    Max Steps.
+    -tp,   --maxTemp=<args>     Max Temperature.
+    -mt,   --minTemp=<args>     Min Temperature.
+    -at,   --maxAtt=<args>     	Max Attemtps.
+    -ac,   --maxAcc=<args>     	Max Accepts.
+    -rj,   --maxRej=<args>     	Max Rejects.  
 ";
 
 #[derive(Debug, RustcDecodable)]
@@ -58,8 +62,8 @@ struct Args {
     flag_targ: String,
     flag_bench: String,
     flag_maxSteps: u64,
-    flag_temp: f64,
-    flag_redFact: f64,
+    flag_maxTemp: f64,
+    flag_minTemp: f64,
     flag_maxAtt: u64,
     flag_maxAcc: u64,
     flag_maxRej: u64,
@@ -100,7 +104,7 @@ fn main() {
     /// defined in the initial-params.txt input file
     ///
     let params_config = Parameters::ParamsConfigurator {
-        param_file_path: "../initial-params.txt".to_string(),
+        param_file_path: "initial-params.txt".to_string(),
         ..Parameters::ParamsConfigurator::default()
     };
 
@@ -115,7 +119,6 @@ fn main() {
         bench_args: args.flag_args2bench.split_whitespace().map(String::from).collect(),
         ..ThreadExecutor::ThreadExecutor::default()
     };
-    // executor.start_meter_proxy();
 
 
     /// Configure the Simulated Annealing problem with the ParamsConfigurator and AppsManager instances.
@@ -126,10 +129,11 @@ fn main() {
         thread_executor: executor,
     };
     
+    
     let annealing_solver = SimulatedAnnealing::Solver::Solver {
-        termination_criteria: TerminationCriteria::Max_Steps(1000000),
-        min_temperature: args.flag_temp,
-        max_temperature: args.flag_redFact,
+        termination_criteria: TerminationCriteria::Max_Steps(args.flag_maxSteps),
+        min_temperature: args.flag_minTemp,
+        max_temperature: args.flag_maxTemp,
         max_attempts: args.flag_maxAtt,
         max_accepts: args.flag_maxAcc,
         max_rejects: args.flag_maxRej,

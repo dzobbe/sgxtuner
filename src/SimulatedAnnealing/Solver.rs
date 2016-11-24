@@ -123,7 +123,9 @@ impl Solver {
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 
-        println!("Initial Evaluation", Green.paint("[ANNEALING SOLVER]"));
+		println!("{}",Green.paint("\n-------------------------------------------------------------------------------"));
+        println!("{} Starting the Evaluation", Green.paint("[TUNER]"));
+        println!("{}",Green.paint("-------------------------------------------------------------------------------"));
         
         let mut state = problem.initial_state();
         let mut energy = problem.energy(&state);
@@ -143,7 +145,9 @@ impl Solver {
         	
         	elapsed_time =(time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
         	
-        	println!("{} Step Number: {:?} - Current Execution Time: {:.2} s", Green.paint("[ANNEALING SOLVER]"), elapsed_steps,elapsed_time);
+        	println!("{}",Green.paint("-------------------------------------------------------------------------------"));
+        	println!("{} Step Number: {:?} - Current Execution Time: {:.2} s", Green.paint("[TUNER]"), elapsed_steps,elapsed_time);
+        	println!("{}",Green.paint("-------------------------------------------------------------------------------"));
         	
             state = {
                 let next_state = problem.new_state(&state, max_steps, elapsed_steps);
@@ -154,8 +158,8 @@ impl Solver {
                 let de = new_energy - energy;
 
                 if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
-                    println!("{} New Accepted Solution: {:?}", Green.paint("[ANNEALING SOLVER]"), elapsed_steps);
                     accepted += 1;
+                 	println!("{} New Accepted Solution: {:?}", Green.paint("[TUNER]"), elapsed_steps);
                     energy = new_energy;
                     
                     if de > 0.0{
@@ -169,7 +173,7 @@ impl Solver {
                     state
                 }
             };
-
+			
             if attempted >= self.max_attempts || accepted >= self.max_accepts {
                 if accepted == 0 {
                     rejected += 1;
@@ -212,7 +216,7 @@ impl Solver {
     
 
 	 /**
-     * Automatica Evaluation of Tmin and Tmax based on certain number 
+     * Automatic Evaluation of Tmin and Tmax based on certain number 
      * of algorithm executions
      */
 	 pub fn auto_param_evaluation(&self){

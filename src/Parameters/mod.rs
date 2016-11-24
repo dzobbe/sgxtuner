@@ -1,13 +1,13 @@
-extern crate rand;
 
-
+use rand;
 use std::io::BufReader;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::collections::HashMap;
-use self::rand::Rng;
+use rand::Rng;
+use ansi_term::Colour::{Yellow,Red};
 
 #[derive(Clone)]
 pub struct ParamInfo {
@@ -45,7 +45,6 @@ impl ParamsConfigurator {
         };
 
         let file_reader = BufReader::new(&file);
-        println!("Reading SGX-MUSL Parameters from file: ");
         for (_, line) in file_reader.lines().enumerate() {
             let topline = line.unwrap();
             let mut topsplit = topline.split(":");
@@ -88,22 +87,30 @@ impl ParamsConfigurator {
                 step: var_step.parse::<u32>().unwrap(),
             };
 
+			let space_state_elems=ParamsConfigurator::get_space_state(var_lbound.parse::<u32>().unwrap(),
+                                                            var_ubound.parse::<u32>().unwrap(),
+                                                            var_step.parse::<u32>().unwrap());
+			let space_state_elems_c=space_state_elems.clone();
+			
             self.params_info_list.insert(var_name.to_string(), params_info_2_add);
             self.params_space_state
-                .insert(var_name.to_string(),
-                        ParamsConfigurator::get_space_state(var_lbound.parse::<u32>().unwrap(),
-                                                            var_ubound.parse::<u32>().unwrap(),
-                                                            var_step.parse::<u32>().unwrap()));
+                .insert(var_name.to_string(),space_state_elems);
+                
             self.current_state.insert(var_name.to_string(), var_value.parse::<u32>().unwrap());
 
 
-            println!("Parameter {:?} - Default value: {:?} {:5} Space State: [{:?},{:?},{:?}]",
-                     var_name,
-                     var_value,
-                     "-",
+        	println!("{} {:?}", Yellow.paint("Input Parameter ==> "), var_name);
+
+            println!("{} [{:?},{:?},{:?}] - {} {:?} ",Yellow.paint("Space State ==> "),
                      var_lbound,
                      var_ubound,
-                     var_step);
+                     var_step,
+                     Yellow.paint("Default Value ==> "),
+                     var_value,
+                     );
+            println!("{} {:?}",Yellow.paint("Elements ==> "), space_state_elems_c);
+            
+        	println!("{}",Red.paint("**************************************************************************************************"));
 
         }
         // ParamsConfigurator::fill_neighborhoods_vec(self);
@@ -124,7 +131,6 @@ impl ParamsConfigurator {
         }
         // Randomize the order of the vector elements
         rand::thread_rng().shuffle(&mut res_vec);
-        println!("Space State Elements: {:?}", res_vec);
         return res_vec;
     }
 
