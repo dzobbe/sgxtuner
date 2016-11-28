@@ -1,3 +1,4 @@
 Cargo.lock
 target
-*.bak.rs
+*.bk.rs
+*.rs.bk

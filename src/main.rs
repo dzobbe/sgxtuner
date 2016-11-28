@@ -10,9 +10,9 @@ extern crate mio;
 extern crate thread_id;
 #[macro_use]
 extern crate lazy_static;
-//extern crate influent;
+// extern crate influent;
 
-use ansi_term::Colour::{Yellow};
+use ansi_term::Colour::Yellow;
 
 
 mod PerfCounters;
@@ -20,13 +20,13 @@ mod Parameters;
 mod SimulatedAnnealing;
 mod EnergyEval;
 mod MeterProxy;
-//mod InfluxProxy;
+// mod InfluxProxy;
 
 #[derive(Debug, Clone,RustcDecodable)]
 pub enum CoolingSchedule {
     linear,
     exponential,
-    adaptive
+    adaptive,
 }
 
 #[derive(Debug, Clone,RustcDecodable)]
@@ -37,8 +37,8 @@ pub enum EnergyType {
 
 #[derive(Debug, Clone)]
 pub enum TerminationCriteria {
-	Max_Steps (u64),
-	Max_Time_Seconds (u64)
+    Max_Steps(u64),
+    Max_Time_Seconds(u64),
 }
 
 
@@ -69,6 +69,7 @@ Options:
     -c,    --cooling=<args>     Cooling Schedule (linear, exponential, adaptive)
 ";
 
+
 #[derive(Debug, RustcDecodable)]
 struct Args {
     flag_targ: String,
@@ -80,7 +81,7 @@ struct Args {
     flag_maxAcc: u64,
     flag_maxRej: u64,
     flag_energy: EnergyType,
-    flag_cooling: CoolingSchedule,    
+    flag_cooling: CoolingSchedule,
     flag_args2targ: String,
     flag_args2bench: String,
 }
@@ -131,10 +132,10 @@ fn main() {
     /// and then evaluate the energy selected by the user
     ///
     let energy_eval = EnergyEval::EnergyEval {
-        target_path		: args.flag_targ,
-        bench_path		: args.flag_bench,
-        target_args		: args.flag_args2targ,
-        bench_args		: args.flag_args2bench.split_whitespace().map(String::from).collect(),
+        target_path: args.flag_targ,
+        bench_path: args.flag_bench,
+        target_args: args.flag_args2targ,
+        bench_args: args.flag_args2bench.split_whitespace().map(String::from).collect(),
     };
 
 
@@ -147,41 +148,42 @@ fn main() {
         params_configurator: params_config,
         energy_evaluator: energy_eval,
     };
-    
-    ///Based on the user choice define what type of energy evaluate. Based on this, the Solver will perform
-    ///either a maximization problem or a minimization problem
+
+    /// Based on the user choice define what type of energy evaluate. Based on this, the Solver will perform
+    /// either a maximization problem or a minimization problem
     ///
-	let energy_type=match args.flag_energy{
-	    		EnergyType::latency    => EnergyType::latency,
-	    		EnergyType::throughput => EnergyType::throughput,
-				};  
-	
-	///An important aspect of the simulated anneling is how the temperature decrease.
-    ///Therefore, the user can choice three types of decreasing function (exp, lin, adapt)
-    ///  
-	let cooling_schedule=match args.flag_cooling{
-	    		CoolingSchedule::exponential  => CoolingSchedule::exponential,
-	    		CoolingSchedule::linear  	  => CoolingSchedule::linear,
-	    		CoolingSchedule::adaptive     => CoolingSchedule::adaptive,
-				};
-	
-    
-    let annealing_solver = SimulatedAnnealing::Solver::Solver {
-        termination_criteria: TerminationCriteria::Max_Steps(args.flag_maxSteps),
-        min_temperature  	: args.flag_minTemp,
-        max_temperature		: args.flag_maxTemp,
-        max_attempts		: args.flag_maxAtt,
-        max_accepts			: args.flag_maxAcc,
-        max_rejects			: args.flag_maxRej,
-        energy_type  		: energy_type,
-        cooling_schedule	: cooling_schedule
-        
+    let energy_type = match args.flag_energy {
+        EnergyType::latency => EnergyType::latency,
+        EnergyType::throughput => EnergyType::throughput,
     };
 
-	///Start the solver
-    let best_state=annealing_solver.solve(&mut problem);
+    /// An important aspect of the simulated anneling is how the temperature decrease.
+    /// Therefore, the user can choice three types of decreasing function (exp, lin, adapt)
+    ///
+    let cooling_schedule = match args.flag_cooling {
+        CoolingSchedule::exponential => CoolingSchedule::exponential,
+        CoolingSchedule::linear => CoolingSchedule::linear,
+        CoolingSchedule::adaptive => CoolingSchedule::adaptive,
+    };
+
+
+    let annealing_solver = SimulatedAnnealing::Solver::Solver {
+        termination_criteria: TerminationCriteria::Max_Steps(args.flag_maxSteps),
+        min_temperature: args.flag_minTemp,
+        max_temperature: args.flag_maxTemp,
+        max_attempts: args.flag_maxAtt,
+        max_accepts: args.flag_maxAcc,
+        max_rejects: args.flag_maxRej,
+        energy_type: energy_type,
+        cooling_schedule: cooling_schedule,
+    };
+
+    /// Start the solver
+    let best_state = annealing_solver.solve(&mut problem);
     println!("{}",Yellow.paint("\n-------------------------------------------------------------------------------------------------------------------"));
-    println!("{} {:?}",Yellow.paint("The Best State found is: "),best_state);
+    println!("{} {:?}",
+             Yellow.paint("The Best State found is: "),
+             best_state);
     println!("{}",Yellow.paint("-------------------------------------------------------------------------------------------------------------------"));
 
 

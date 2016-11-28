@@ -41,13 +41,17 @@ pub trait Problem {
      * Lower energy means the state is more optimal - simulated
      * annealing will try to find a state with the lowest energy.
      */
-    fn energy(&mut self, state: &Self::State,energy_type: EnergyType) -> Option<f64>;
+    fn energy(&mut self, state: &Self::State, energy_type: EnergyType) -> Option<f64>;
 
     /**
      * This function should provide a new state, given the previous
      * state.
      */
-    fn new_state(&mut self, state: &Self::State, max_steps: u64, current_step: u64) -> Option<Self::State>;
+    fn new_state(&mut self,
+                 state: &Self::State,
+                 max_steps: u64,
+                 current_step: u64)
+                 -> Option<Self::State>;
 }
 
 pub struct ProblemInputs {
@@ -59,28 +63,32 @@ pub struct ProblemInputs {
 impl Problem for ProblemInputs {
     type State = HashMap<String, u32>;
 
-	/**
+    /**
 	Start Extraction of Initial State: it takes the Parameters Configuration 
     given in input
 	**/
     fn initial_state(&mut self) -> Self::State {
-        return self.params_configurator.get_initial_param_conf();        
+        return self.params_configurator.get_initial_param_conf();
     }
-   
-    
-	/**
+
+
+    /**
 	Start Energy Evaluation: it starts the execution of the benchmark for the 
     specific parameter configuration and evaluate the performance result
 	**/
     fn energy(&mut self, state: &Self::State, energy_type: EnergyType) -> Option<f64> {
-        return self.energy_evaluator.execute_test_instance(state,energy_type);
+        return self.energy_evaluator.execute_test_instance(state, energy_type);
     }
 
 
-	/**
+    /**
 	Start Extraction of New State from Neighborhood Set
 	**/
-    fn new_state(&mut self, state: &Self::State, max_steps: u64, current_step: u64) -> Option<Self::State> {
+    fn new_state(&mut self,
+                 state: &Self::State,
+                 max_steps: u64,
+                 current_step: u64)
+                 -> Option<Self::State> {
         return self.params_configurator.get_rand_neighborhood(state, max_steps, current_step);
     }
 }
