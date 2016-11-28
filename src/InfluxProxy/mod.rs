@@ -12,7 +12,6 @@ pub struct InfluxProxy {
 }
 
 impl InfluxProxy {
-	
-	
+		///TODO: Proxy to transfer metrics from the Simulated Annealing to InfluxDB	
 }
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Giovanni Mazzeo mazzeo.gio@gmail.com"]
 
 [[bin]]
-name = "sgxmusl-autotuner"
+name = "sgxmusl-tuner"
 
 [dependencies]
 time = "*"
@@ -22,3 +22,4 @@ num = "0.1"
 ansi_term = "0.9"
 mio = "0.4"
 #influent = "0.3"
+thread-id="3.0.0"

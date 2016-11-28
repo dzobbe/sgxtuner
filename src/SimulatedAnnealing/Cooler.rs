@@ -13,7 +13,7 @@ pub struct StepsCooler{
 
 pub trait Cooler {
 	fn exponential_cooling(&self, metric :u64) -> f64; 
-	fn linear_cooling(&self) -> f64;
+	fn linear_cooling(&self, metric :u64) -> f64;
 	fn adaptive_cooling(&self) -> f64;
 }
 
@@ -24,7 +24,7 @@ impl Cooler for TimeCooler {
        	return 	0.0;
 	}
     
-    fn linear_cooling(&self) -> f64 {
+    fn linear_cooling(&self, elapsed_time :u64) -> f64 {
     	return 0.0;
     	
 	}
@@ -47,9 +47,13 @@ impl Cooler for StepsCooler {
        	return 	self.max_temp * (reduction_factor * (step as f64) / (self.max_steps as f64)).exp();
 	}
     
-    fn linear_cooling(&self) -> f64 {
+    fn linear_cooling(&self, step :u64) -> f64 {
+    	if self.min_temp <= 0.0 {
+    		panic!("Linear cooling requires a minimum temperature greater than zero");
+    	}
     	
-    	return 0.0;
+    	let reduction_factor = -(self.max_temp / self.min_temp).ln();
+    	return 	self.max_temp * (1.0/1.0+(0.7*(reduction_factor * (step as f64) / (self.max_steps as f64))));
     	
 	}
     

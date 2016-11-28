@@ -18,6 +18,7 @@
 
 use time;
 use CoolingSchedule;
+use EnergyType;
 use TerminationCriteria;
 use rand::thread_rng;
 use rand::distributions::{Range, IndependentSample};
@@ -71,7 +72,14 @@ pub struct Solver {
     /**
      * The Cooling Schedule procedure to select
      */
-    pub cooling_schedule: CoolingSchedule
+    pub cooling_schedule: CoolingSchedule,
+    
+    /**
+     * The Energy metric to evaluate (Throughput or Latency)
+     */
+    pub energy_type: EnergyType
+    
+    
     
     
 }
@@ -123,13 +131,16 @@ impl Solver {
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 
-		println!("{}",Green.paint("\n-------------------------------------------------------------------------------"));
-        println!("{} Starting the Evaluation", Green.paint("[TUNER]"));
-        println!("{}",Green.paint("-------------------------------------------------------------------------------"));
+		println!("{}",Green.paint("\n-------------------------------------------------------------------------------------------------------------------"));
+        println!("{} Initialization Phase: Evaluation of Energy for Default Paramters", Green.paint("[TUNER]"));
+        println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
         
         let mut state = problem.initial_state();
-        let mut energy = problem.energy(&state);
-        let mut temperature = self.max_temperature;
+        let mut energy = match problem.energy(&state,self.energy_type.clone()){
+        	Some(nrg) => nrg,
+        	None 	  => panic!("The initial configuration does not allow to calculate the energy"),
+        };
+        let mut temperature: f64 = self.max_temperature;
 
         let mut attempted = 0;
         let mut accepted = 0;
@@ -145,33 +156,48 @@ impl Solver {
         	
         	elapsed_time =(time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
         	
-        	println!("{}",Green.paint("-------------------------------------------------------------------------------"));
-        	println!("{} Step Number: {:?} - Current Execution Time: {:.2} s", Green.paint("[TUNER]"), elapsed_steps,elapsed_time);
-        	println!("{}",Green.paint("-------------------------------------------------------------------------------"));
+        	println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
+        	println!("{} Annealing Phase - Completed Steps: {:.2}% - Time Spent until Now: {:.2} s", Green.paint("[TUNER]"), (elapsed_steps as f64/cooler.max_steps as f64)*100.0,elapsed_time);
+            println!("{} Total Accepted Solutions: {:?} - Current Temperature: {:.2}", Green.paint("[TUNER]"), accepted, temperature);       	
+        	println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
         	
             state = {
-                let next_state = problem.new_state(&state, max_steps, elapsed_steps);
-                let new_energy = problem.energy(&next_state);
+                let next_state = match problem.new_state(&state, max_steps, elapsed_steps){
+                	// There is a neighborhood available
+                	Some(n_s) => n_s,
+					// No neighborhood available, all states have been visited
+                	None 	  => {
+           				 println!("{} Any Neighborhood Available - Terminate the Annealing", Green.paint("[TUNER]"));
+           				 break;       	
+                	}
+                };
+                
+                let accepted_state = match problem.energy(&next_state,self.clone().energy_type){
+                		Some(new_energy) => {
+	                			attempted += 1;
+				                let de = new_energy - energy;
+				                if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
+				                    accepted += 1;
+				                    energy = new_energy;
+				                    
+				                    if de > 0.0{
+				                    	total_improves=total_improves+1;
+				                    	subsequent_improves=subsequent_improves+1;
+				                    }
+				                    next_state
+				                    
+				                } else {
+				                	subsequent_improves=0;
+				                    state
+				                }
+                			},
+                		 None 	  => {
+                			   println!("{} The current configuration parameters cannot be evaluated. Skip!", Green.paint("[TUNER]"));
+                			   state
+                			},
+            	};
 
-                attempted += 1;
-
-                let de = new_energy - energy;
-
-                if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
-                    accepted += 1;
-                 	println!("{} New Accepted Solution: {:?}", Green.paint("[TUNER]"), elapsed_steps);
-                    energy = new_energy;
-                    
-                    if de > 0.0{
-                    	total_improves=total_improves+1;
-                    	subsequent_improves=subsequent_improves+1;
-                    }
-                    next_state
-                    
-                } else {
-                	subsequent_improves=0;
-                    state
-                }
+                accepted_state
             };
 			
             if attempted >= self.max_attempts || accepted >= self.max_accepts {
@@ -185,19 +211,18 @@ impl Solver {
                 attempted = 0;
                 accepted = 0;
                 
-                let temperature: f64 = match self.cooling_schedule{
-        			CoolingSchedule::Linear 	 => cooler.linear_cooling(),
-        			CoolingSchedule::Exponential => cooler.exponential_cooling(elapsed_steps),
-        			CoolingSchedule::Adaptive 	 => cooler.adaptive_cooling(),
-                };
-                
-                
                 if rejected >= self.max_rejects {
                     break;
                 }
             }
+            
+            temperature = match self.cooling_schedule{
+        			CoolingSchedule::linear 	 => cooler.linear_cooling(elapsed_steps),
+        			CoolingSchedule::exponential => cooler.exponential_cooling(elapsed_steps),
+        			CoolingSchedule::adaptive 	 => cooler.adaptive_cooling(),
+             };
         }
-
+ 
         state
     }
     
@@ -233,7 +258,8 @@ impl Default for Solver {
             max_attempts: 50,
             max_accepts: 10,
             max_rejects: 4,
-            cooling_schedule: CoolingSchedule::Exponential
+            cooling_schedule: CoolingSchedule::exponential,
+            energy_type: EnergyType::throughput
         }
     }
 }

@@ -16,9 +16,11 @@
 ///  limitations under the License.
 /// ///////////////////////////////////////////////////////////////////////////
 
-use super::super::Parameters;
-use super::super::ThreadExecutor;
+use Parameters;
+use EnergyType;
+use EnergyEval;
 use std::collections::HashMap;
+
 /**
  * A problem represents something to be solved using simulated
  * annealing, and provides methods to calculate the energy of a
@@ -39,18 +41,18 @@ pub trait Problem {
      * Lower energy means the state is more optimal - simulated
      * annealing will try to find a state with the lowest energy.
      */
-    fn energy(&mut self, state: &Self::State) -> f64;
+    fn energy(&mut self, state: &Self::State,energy_type: EnergyType) -> Option<f64>;
 
     /**
      * This function should provide a new state, given the previous
      * state.
      */
-    fn new_state(&mut self, state: &Self::State, max_steps: u64, current_step: u64) -> Self::State;
+    fn new_state(&mut self, state: &Self::State, max_steps: u64, current_step: u64) -> Option<Self::State>;
 }
 
 pub struct ProblemInputs {
     pub params_configurator: Parameters::ParamsConfigurator,
-    pub thread_executor: ThreadExecutor::ThreadExecutor,
+    pub energy_evaluator: EnergyEval::EnergyEval,
 }
 
 
@@ -62,8 +64,7 @@ impl Problem for ProblemInputs {
     given in input
 	**/
     fn initial_state(&mut self) -> Self::State {
-        let param_conf = self.params_configurator.get_initial_param_conf();
-        return param_conf;
+        return self.params_configurator.get_initial_param_conf();        
     }
    
     
@@ -71,22 +72,15 @@ impl Problem for ProblemInputs {
 	Start Energy Evaluation: it starts the execution of the benchmark for the 
     specific parameter configuration and evaluate the performance result
 	**/
-    fn energy(&mut self, state: &Self::State) -> f64 {
-        let perf_result = self.thread_executor.execute_test_instance(state);
-        return perf_result;
+    fn energy(&mut self, state: &Self::State, energy_type: EnergyType) -> Option<f64> {
+        return self.energy_evaluator.execute_test_instance(state,energy_type);
     }
 
 
 	/**
 	Start Extraction of New State from Neighborhood Set
 	**/
-    fn new_state(&mut self, state: &Self::State, max_steps: u64, current_step: u64) -> Self::State {
-        match self.params_configurator.get_neighborhood_params(max_steps, current_step) {
-            // There is a neighborhood available to return
-            Some(x) => return x,
-            // No neighborhood available, return a random state
-            None => return self.params_configurator.get_random_state(),
-        };
-
+    fn new_state(&mut self, state: &Self::State, max_steps: u64, current_step: u64) -> Option<Self::State> {
+        return self.params_configurator.get_rand_neighborhood(state, max_steps, current_step);
     }
 }
