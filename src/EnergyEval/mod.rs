@@ -22,7 +22,7 @@ pub struct EnergyEval {
 }
 
 // Number of iteration with which re-execute the same parameter configuration
-const num_iterations: u8 = 1;
+const num_iterations: u8 = 10;
 
 impl EnergyEval {
     pub fn new() -> EnergyEval {
