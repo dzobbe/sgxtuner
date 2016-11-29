@@ -54,14 +54,14 @@ In this example we run the `sgxmusl-tuner` on memcached using as a benchmark the
 
 1. Configure the SGX-MUSL parameters in the `params.conf` file. 
 
-```
-MUSL_ETHREADS:[6,10,1]:6
-MUSL_STHREADS:[3,8,1]:5
-MUSL_ESPINS:[400,600,10]:500
-MUSL_SSPINS:[80,120,10]:100
-MUSL_ESLEEP:[14000,18000,1000]:16000
-MUSL_SSLEEP:[3000,4000,100]:4000
-```
+   ```
+   MUSL_ETHREADS:[6,10,1]:6
+   MUSL_STHREADS:[3,8,1]:5
+   MUSL_ESPINS:[400,600,10]:500
+   MUSL_SSPINS:[80,120,10]:100
+   MUSL_ESLEEP:[14000,18000,1000]:16000
+   MUSL_SSLEEP:[3000,4000,100]:4000
+   ```
 
 2.  Run the tuner. Yes I know, the arguments for the `sgxmusl-tuner` are too much. An acquisition through an .xml configuration file is one of the TODOs. Anyway, for the moment the `start-tuning.sh` script can help.
 
