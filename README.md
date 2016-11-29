@@ -26,20 +26,26 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
 4. Run the tuner by passing through the command line: the path to the target application to test, the target arguments, the path to the benchmark application, the benchmark arguments, the parameters needed by the simulated annealing algorithm.
 
    ```sh
-   $ Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --         maxSteps=<maxSteps> [-t] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=   <maxAccepts> [-rj] --maxRej=<maxRejects> --energy=<energy> --cooling=<cooling>
+   $ Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
+   --bench=<benchmarkPath> [--args2bench=<args>] [-ms]                         \
+   --maxSteps=<maxSteps> [-t] --maxTemp=<maxTemperature> [-mt]                 \
+   --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac]               \
+   --maxAcc=   <maxAccepts> [-rj] --maxRej=<maxRejects>                        \
+   --energy=<energy> --cooling=<cooling>
+   
   Options:
-    -t,    --targ=<args>     	  #Target Path
-    --args2targ=<args>          #Arguments for Target
-    -b,    --bench=<args>       #Benchmark Path
-    --args2bench=<args>         #Arguments for Benchmark
-    -ms,   --maxSteps=<args>    #Max Steps of Annealing
-    -tp,   --maxTemp=<args>     #Max Temperature
-    -mt,   --minTemp=<args>     #Min Temperature
-    -at,   --maxAtt=<args>      #Max Attemtps
-    -ac,   --maxAcc=<args>      #Max Accepts
-    -rj,   --maxRej=<args>      #Max Rejects  
-    -e,	   --energy=<args>     #Energy to eval (latency or throughput)
-    -c,    --cooling=<args>     #Cooling Schedule (linear, exponential, adaptive)
+    -t,    --targ=<args>         #Target Path
+    --args2targ=<args>           #Arguments for Target
+    -b,    --bench=<args>        #Benchmark Path
+    --args2bench=<args>          #Arguments for Benchmark
+    -ms,   --maxSteps=<args>     #Max Steps of Annealing
+    -tp,   --maxTemp=<args>      #Max Temperature
+    -mt,   --minTemp=<args>      #Min Temperature
+    -at,   --maxAtt=<args>       #Max Attemtps
+    -ac,   --maxAcc=<args>       #Max Accepts
+    -rj,   --maxRej=<args>       #Max Rejects  
+    -e,	   --energy=<args>      #Energy to eval (latency or throughput)
+    -c,    --cooling=<args>      #Cooling Schedule (linear, exponential, adaptive)
    ```
    
 
