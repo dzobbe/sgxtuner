@@ -59,7 +59,7 @@ Options:
     --args2targ=<args>          Arguments for Target.
     -b,    --bench=<args>     	Benchmark Path.
     --args2bench=<args>         Arguments for Benchmark.
-    -ms,   --maxSteps=<args>    Max Steps.
+    -ms,   --maxSteps=<args>    Max Steps of Annealing.
     -tp,   --maxTemp=<args>     Max Temperature.
     -mt,   --minTemp=<args>     Min Temperature.
     -at,   --maxAtt=<args>     	Max Attemtps.
@@ -121,7 +121,7 @@ fn main() {
     /// defined in the initial-params.txt input file
     ///
     let params_config = Parameters::ParamsConfigurator {
-        param_file_path: "initial-params.conf".to_string(),
+        param_file_path: "params.conf".to_string(),
         ..Parameters::ParamsConfigurator::default()
     };
 
