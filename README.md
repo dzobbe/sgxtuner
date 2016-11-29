@@ -81,4 +81,4 @@ The following issues and TODOs need to be solved:
 * The `adaptive` cooling schedule still need to be developed.
 * The provision of the metrics to `InfluxDB` and then to the `Chronograf`need to be developed
 * A parallel version of the algorithm is under construction
-
+* An acquisition of arguments through a .xml file
