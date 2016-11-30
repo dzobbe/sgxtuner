@@ -24,13 +24,14 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    [Param_name]:[min_value,max_value,step]:[initial_value]
    ```
 4. Run the tuner by passing through the command line: 
-* The path to the binary of the Target application to test
-* The Target arguments
-* The path to the binary of the Benchmark application
-* The Benchmark arguments
-* The parameters needed by the Simulated Annealing algorithm
- **Note 1** -> The Benchmark MUST be started `localhost:12349` that is the address on which the MeterProxy listens
- **Note 2** -> The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact,  automatically searches in the Target arguments for the first occurrences of -p/--port and -l/-h/--address/--host. 
+   * The path to the binary of the Target application to test
+   * The Target arguments
+   * The path to the binary of the Benchmark application
+   * The Benchmark arguments
+   * The parameters needed by the Simulated Annealing algorithm
+   **Note 1** -> The Benchmark MUST be started `localhost:12349` that is the address on which the MeterProxy listens
+   **Note 2** -> The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact, automatically searches in the Target arguments for the first occurrences of -p/--port and -l/-h/--address/--host. 
+   
    ```sh
    $ Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
    --bench=<benchmarkPath> [--args2bench=<args>] [-ms]                         \
