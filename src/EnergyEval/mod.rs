@@ -223,7 +223,7 @@ impl EnergyEval {
 		for arg in args{ 
 			if take_next{
 				port=Some(arg.parse().unwrap()); 
-				take_next=false;
+				break
 			}
 			if arg=="-p" || arg=="--port"{
 				take_next=true;
@@ -243,9 +243,9 @@ impl EnergyEval {
 		for arg in args{ 
 			if take_next{
 				addr=Some(arg.parse().unwrap());
-				take_next=false; 
+				break;
 			}
-			if arg=="-l" || arg=="--address"{
+			if arg=="-l" || arg=="--address" || arg=="-h" || arg=="--host"{
 				take_next=true;
  		 	} 
  		 } 

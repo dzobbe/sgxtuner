@@ -56,9 +56,9 @@ const USAGE: &'static str = "
 Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-t] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects> --energy=<energy> --cooling=<cooling>
 Options:
     -t,    --targ=<args>     	Target Path.
-    --args2targ=<args>          Arguments for Target.
+    --args2targ=<args>          Arguments for Target (Specify Host and Port!).
     -b,    --bench=<args>     	Benchmark Path.
-    --args2bench=<args>         Arguments for Benchmark.
+    --args2bench=<args>         Arguments for Benchmark (start on localhost:12349!).
     -ms,   --maxSteps=<args>    Max Steps of Annealing.
     -tp,   --maxTemp=<args>     Max Temperature.
     -mt,   --minTemp=<args>     Min Temperature.
@@ -99,6 +99,7 @@ The Sgx-Musl Auto Tuner is a tool able to needs in input:
 	- Probability p_restart with which re-initialize the search at random
 	- Fixed number s of random moves for perturbation
 **/
+
 /**
 Sgx-Musl Auto Tuner Entry Point
 **/
@@ -112,8 +113,9 @@ fn main() {
         .unwrap_or_else(|e| e.exit());
     println!("{:?}", args);
 
+	
 
-
+	
 
 
     /// Create ParamsConfigurator useful to manage the parameters (or states)
@@ -156,6 +158,7 @@ fn main() {
         EnergyType::latency => EnergyType::latency,
         EnergyType::throughput => EnergyType::throughput,
     };
+
 
     /// An important aspect of the simulated anneling is how the temperature decrease.
     /// Therefore, the user can choice three types of decreasing function (exp, lin, adapt)
