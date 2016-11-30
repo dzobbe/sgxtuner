@@ -30,9 +30,9 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    * The Benchmark arguments
    * The parameters needed by the Simulated Annealing algorithm
    
-   ⚠️ **Note 1** - The Benchmark MUST be started `localhost:12349` that is the address on which the MeterProxy listens
+   ⚠️ **Note 1** - The Benchmark MUST be started on `localhost:12349` that is the address on which the `MeterProxy` listens
    
-   ⚠️ **Note 2** - The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact, automatically searches in the Target arguments for the first occurrences of -p/--port and -l/-h/--address/--host. 
+   ⚠️ **Note 2** - The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact, automatically searches in the Target arguments for the first occurrences of `-p/--port` and `-l/-h/--address/--host`. 
    
    ```sh
    $ Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
