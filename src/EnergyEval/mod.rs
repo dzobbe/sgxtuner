@@ -11,7 +11,7 @@ use super::MeterProxy;
 use ansi_term::Colour::{Red, Yellow, Green};
 use std::time::Duration;
 use EnergyType;
-use std::net::{TcpStream, Shutdown};
+use std::net::{TcpStream, Shutdown,IpAddr};
 
 #[derive(Clone)]
 pub struct EnergyEval {
@@ -41,9 +41,11 @@ impl EnergyEval {
                                  -> Option<f64> {
 
         let perf_metrics_handler = PerfCounters::PerfMetrics::new();
-        let target_port = 12347;
+        let target_port = self.get_target_port();
+        let target_addr = self.get_target_addr();
+        
         let mut target_alive: bool = false;
-
+ 
         /// Set the environement variables that will configure the parameters
         /// needed by the target application
         ///
@@ -51,7 +53,7 @@ impl EnergyEval {
             env::set_var(param_name.to_string(), param_value.to_string());
         }
 
-
+ 
         // Repeat the execution 10 times for accurate results
         let mut nrg_vec = Vec::with_capacity(num_iterations as usize);
         for i in 0..num_iterations {
@@ -60,6 +62,7 @@ impl EnergyEval {
             println!("{} {}",
                      Green.paint("====> Iteration Number for current Configuration: "),
                      i + 1);
+
 
 
             /// **
@@ -76,34 +79,21 @@ impl EnergyEval {
             // Wait for target to startup
             thread::sleep(Duration::from_millis(2000));
 
-            // Realize one fake connection to check if the target is alive
-            // It can happen that the configuration of parameters does not allow to start the target.
-            // In that case the energy returned by this function is None
-            target_alive = match TcpStream::connect(("127.0.0.1", target_port)) {
-                Err(e) => {
-                    println!("{} The Target Application seems down. Maybe a bad configuration: {}",
-                             Red.paint("*****ERROR***** --> "),
-                             e);
-                    target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
-                    false
-                }
-                Ok(s) => {
-                    s.shutdown(Shutdown::Both);
-                    drop(s);
-                    true
-                }
-            };
 
+			//Check if the target is alive
+            target_alive=self.check_target_alive(target_addr.clone(),target_port);
             if target_alive == false {
+            	target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
                 break;
             }
 
+			
 
             /// **
             /// Start METER-PROXY, which will interpose between the Target and the
             /// Benchmark apps to extract metrics for the energy evaluation
             /// *
-            let meter_proxy = MeterProxy::Meter::new(target_port);
+            let meter_proxy = MeterProxy::Meter::new(target_addr.clone(),target_port);
             let meter_proxy_c = meter_proxy.clone();
             let child_meter_proxy = thread::spawn(move || {
                 meter_proxy.start();
@@ -202,7 +192,69 @@ impl EnergyEval {
 
         // println!("Latency {:?} ms", meter_proxy_c.get_latency_ms());
         // meter_proxy_c.print();
-    }
+    } 
+       
+   fn check_target_alive(&self, target_addr :String, target_port: u16) -> bool{
+   		 // Realize one fake connection to check if the target is alive
+         // It can happen that the configuration of parameters does not allow to start the target.
+         // In that case the energy returned by this function is None
+        let targ_addr: IpAddr = target_addr.parse()
+              .expect("Unable to parse Target Address");
+        let target_alive = match TcpStream::connect((targ_addr, target_port)) {
+            Err(e) => {
+                println!("{} The Target Application seems down. Maybe a bad configuration: {}",
+                         Red.paint("*****ERROR***** --> "),
+                         e);
+                false
+            }
+            Ok(s) => {
+                s.shutdown(Shutdown::Both);
+                drop(s);
+                true
+            }
+        };
+        return target_alive;
+   }
+                                 
+ 	fn get_target_port(&self) -> u16 {
+ 		let args=self.target_args.split_whitespace(); 
+		let mut take_next=false;	
+		let mut port: Option<u16>=None; 
+		for arg in args{ 
+			if take_next{
+				port=Some(arg.parse().unwrap()); 
+				take_next=false;
+			}
+			if arg=="-p" || arg=="--port"{
+				take_next=true;
+ 		 	}
+ 		 }
+ 		
+ 		match port {
+ 			Some(p) => return p,
+ 			None 	=> panic!("Please specify the TARGET Port in the target arguments"),
+ 		}
+ 	}
+ 	
+ 	fn get_target_addr(&self) -> String {
+ 		let args=self.target_args.split_whitespace(); 
+		let mut take_next=false;	
+		let mut addr: Option<String>=None; 
+		for arg in args{ 
+			if take_next{
+				addr=Some(arg.parse().unwrap());
+				take_next=false; 
+			}
+			if arg=="-l" || arg=="--address"{
+				take_next=true;
+ 		 	} 
+ 		 } 
+
+ 		match addr {
+ 			Some(a) => return a,
+ 			None 	=> panic!("Please specify the TARGET Port in the target arguments"),
+ 		}
+ 	}
 }
 
 impl Default for EnergyEval {

@@ -4,7 +4,7 @@ use time;
 use thread_id;
 use ansi_term;
 use ansi_term::Colour::{Red, Yellow};
-use std::net::{TcpListener, TcpStream, Shutdown, SocketAddr};
+use std::net::{TcpListener, TcpStream, Shutdown, SocketAddr,IpAddr};
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{thread, str};
@@ -100,14 +100,16 @@ It measures both Throughput and Latency of the TARGET application under test.
 **/
 #[derive(Clone)]
 pub struct Meter {
+	pub a_target: String,
     pub p_target: u16,
     pub reset_lock_flag: Arc<RwLock<bool>>,
 }
 
 
 impl Meter {
-    pub fn new(port_target: u16) -> Meter {
+    pub fn new(addr_target: String, port_target: u16) -> Meter {
         Meter {
+            a_target: addr_target,
             p_target: port_target,
             reset_lock_flag: Arc::new(RwLock::new(false)),
         }
@@ -135,6 +137,7 @@ impl Meter {
         for stream in acceptor.incoming() {
 
             let reset_lock_flag_c = self.reset_lock_flag.clone();
+            let a_target_c = self.clone().a_target;
             let p_target_c = self.p_target;
 
             if *reset_lock_flag_c.read().unwrap() == true {
@@ -151,7 +154,7 @@ impl Meter {
                         let stream_c2 = stream.try_clone().unwrap();
                         stream_c2.set_read_timeout(Some(Duration::new(3, 0)));
 
-                        Meter::start_pipe(stream_c, p_target_c);
+                        Meter::start_pipe(stream_c, a_target_c, p_target_c);
                         drop(stream);
 
                     }));
@@ -188,10 +191,12 @@ impl Meter {
         return TIME_TABLE.get_avg_value() / 1000000.0f64;
     }
 
-    fn start_pipe(front: TcpStream, port: u16) {
+    fn start_pipe(front: TcpStream, target_addr: String, target_port: u16) {
 
-        let mut back = match TcpStream::connect(("127.0.0.1", port)) {
-            Err(e) => {
+		let targ_addr: IpAddr = target_addr.parse()
+            .expect("Unable to parse Target Address");
+        let mut back = match TcpStream::connect((targ_addr, target_port)) {
+            Err(e) => { 
                 let mut err = ERROR.lock().unwrap();
                 if *err == false {
                     println!("{} Unable to connect to the Target Application. Maybe a bad \
