@@ -23,8 +23,14 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    ```
    [Param_name]:[min_value,max_value,step]:[initial_value]
    ```
-4. Run the tuner by passing through the command line: the path to the target application to test, the target arguments, the path to the benchmark application, the benchmark arguments, the parameters needed by the simulated annealing algorithm.
-
+4. Run the tuner by passing through the command line: 
+* The path to the binary of the Target application to test
+* The Target arguments
+* The path to the binary of the Benchmark application
+* The Benchmark arguments
+* The parameters needed by the Simulated Annealing algorithm
+ **Note 1** -> The Benchmark MUST be started `localhost:12349` that is the address on which the MeterProxy listens
+ **Note 2** -> The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact,  automatically searches in the Target arguments for the first occurrences of -p/--port and -l/-h/--address/--host. 
    ```sh
    $ Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
    --bench=<benchmarkPath> [--args2bench=<args>] [-ms]                         \
@@ -69,7 +75,7 @@ In this example we run the `sgxmusl-tuner` on memcached using as a benchmark the
    $ target/debug/sgxmusl-tuner --targ=$MEMCACHED_HOME/bin/memcached \
     --args2targ="-l 127.0.0.1 -p 12347" \
     --bench=$MCPERF_HOME/bin/mcperf \
-    --args2bench="-p 12347 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16" \
+    --args2bench="-p 12349 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16" \
     --maxSteps=10000 --maxTemp=1000 --minTemp=2 --maxAtt=100 --maxAcc=100 --maxRej=500 \
     --energy=throughput \
     --cooling=exponential
