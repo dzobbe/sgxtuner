@@ -28,7 +28,13 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    * The Target arguments
    * The path to the binary of the Benchmark application
    * The Benchmark arguments
-   * The parameters needed by the Simulated Annealing algorithm
+   * The parameters needed by the tool to carry out the Simulated Annealing:
+         * maxSteps : the number of steps to carry out the annealing process. Higher is this number, more accurate will be the final result at the cost of execution time. 
+         * numIter  : The number of iterations to spend on each stage of exploration to get average measurements. 
+         * maxTemp  : The starting temperature of the annealing process. Usually this value is set to a value that allows to choose the 98% of the moves. 
+         * minTemp  : The final temperature of the annealing process.
+         * energy   : The type of energy to measure (Throughput or Latency)
+         * cooling  : The cooling function of the temperature (Exponential, Linear, Adaptive)
    
    ⚠️ **Note 1** - The Benchmark MUST be started on `localhost:12349` that is the address on which the `MeterProxy` listens
    
@@ -36,11 +42,10 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    
    ```sh
    $ Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
-   --bench=<benchmarkPath> [--args2bench=<args>] [-ms]                         \
-   --maxSteps=<maxSteps> [-t] --maxTemp=<maxTemperature> [-mt]                 \
-   --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac]               \
-   --maxAcc=   <maxAccepts> [-rj] --maxRej=<maxRejects>                        \
-   --energy=<energy> --cooling=<cooling>
+   --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps>   \
+   [-ni] --numIter=<numIter>        [-tp] --maxTemp=<maxTemperature>           \
+   [-mt] --minTemp=<minTemperature> [-e] --energy=<energy>                     \
+   [-c] --cooling=<cooling>
    
   Options:
     -t,    --targ=<args>         #Target Path
@@ -48,11 +53,9 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
     -b,    --bench=<args>        #Benchmark Path
     --args2bench=<args>          #Arguments for Benchmark
     -ms,   --maxSteps=<args>     #Max Steps of Annealing
+    -ni,   --numIter=<args>      #Number of Iterations for each stage of exploration
     -tp,   --maxTemp=<args>      #Max Temperature
-    -mt,   --minTemp=<args>      #Min Temperature
-    -at,   --maxAtt=<args>       #Max Attemtps
-    -ac,   --maxAcc=<args>       #Max Accepts
-    -rj,   --maxRej=<args>       #Max Rejects  
+    -mt,   --minTemp=<args>      #Min Temperature 
     -e,	   --energy=<args>      #Energy to eval (latency or throughput)
     -c,    --cooling=<args>      #Cooling Schedule (linear, exponential, adaptive)
    ```
@@ -79,7 +82,7 @@ In this example we run the `sgxmusl-tuner` on memcached using as a benchmark the
     --args2targ="-l 127.0.0.1 -p 12347" \
     --bench=$MCPERF_HOME/bin/mcperf \
     --args2bench="-p 12349 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16" \
-    --maxSteps=10000 --maxTemp=1000 --minTemp=2 --maxAtt=100 --maxAcc=100 --maxRej=500 \
+    --maxSteps=10000 --numIter=5 --maxTemp=1000 --minTemp=2  \
     --energy=throughput \
     --cooling=exponential
    ```
