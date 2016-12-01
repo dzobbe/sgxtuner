@@ -2,7 +2,7 @@
 A tool for automatic tuning of SGX Musl library parameters written in Rust. The application searches for the best configuration parameters using the Simulated Annealing algorithm (https://en.wikipedia.org/wiki/Simulated_annealing), a stochastic process for iterated local search.
 
 ## Requirements
-Of course, you will need Rust installed. If you haven't already, get it here: [rust-lang.org](https://www.rust-lang.org). Also you need Cargo [Cargo](https://crates.io) to easily compile. The rustc compiler version required is the 1.15.0-nightly.
+Of course, you will need Rust installed. If you haven't already, get it here: [rust-lang.org](https://www.rust-lang.org). Also you need [Cargo](https://crates.io) to easily compile. The rustc compiler version required is the 1.15.0-nightly.
 
 
 ## Usage
@@ -45,7 +45,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps>   \
    [-ni] --numIter=<numIter>        [-tp] --maxTemp=<maxTemperature>           \
    [-mt] --minTemp=<minTemperature> [-e] --energy=<energy>                     \
-   [-c] --cooling=<cooling>
+   [-c] --cooling=<cooling>
    
   Options:
     -t,    --targ=<args>         #Target Path
