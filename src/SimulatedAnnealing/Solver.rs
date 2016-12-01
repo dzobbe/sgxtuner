@@ -124,40 +124,46 @@ impl Solver {
                  Green.paint("[TUNER]"));
         println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
+        let mut start_time = time::precise_time_ns();
+        
         let mut state = problem.initial_state();
         let mut energy = match problem.energy(&state, self.energy_type.clone()) {
             Some(nrg) => nrg,
             None => panic!("The initial configuration does not allow to calculate the energy"),
         };
+        
+        let mut elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+        let estimated_time_2_complete=((elapsed_time as f64)*max_steps as f64)/3600.0;
+        
         let mut temperature: f64 = self.max_temperature;
-
         let mut attempted = 0;
         let mut accepted = 0;
         let mut rejected = 0;
         let mut total_improves = 0;
         let mut subsequent_improves = 0;
-        let mut elapsed_time = 0.0;
 
-
-        let start_time = time::precise_time_ns();
+        start_time = time::precise_time_ns();
 
         for elapsed_steps in 0..max_steps {
 
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
-
+			
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
-            println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Time Spent until Now: {:.2} \
-                      s",
+            println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated time to Complete: {:.2} Hrs",
                      Green.paint("[TUNER]"), elapsed_steps,
                      (elapsed_steps as f64 / cooler.max_steps as f64) * 100.0,
-                     elapsed_time);
-            println!("{} Total Accepted Solutions: {:?} - Current Temperature: {:.2}",
+                      estimated_time_2_complete as usize);
+            println!("{} Total Accepted Solutions: {:?} - Current Temperature: {:.2} - Elapsed Time: {:.2} s",
                      Green.paint("[TUNER]"),
                      accepted,
-                     temperature);
+                     temperature,
+                     elapsed_time);
            /* println!("{} Accepted State: {:?}",
                      Green.paint("[TUNER]"),
-                     state as HashMap);*/
+                     state);*/
+            println!("{} Accepted Energy: {:.4}",
+                     Green.paint("[TUNER]"),
+                     energy);
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
             
 
@@ -179,7 +185,7 @@ impl Solver {
                         if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
                             accepted += 1;
                             energy = new_energy;
-
+					
                             if de > 0.0 {
                                 total_improves = total_improves + 1;
                                 subsequent_improves = subsequent_improves + 1;
@@ -193,6 +199,7 @@ impl Solver {
                             //updater.send_update(new_energy, next_state, energy, state, elapsed_steps);
                             state
                         }
+                        
                         
                     }
                     None => {
