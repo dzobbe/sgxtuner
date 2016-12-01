@@ -10,7 +10,8 @@ use rand::Rng;
 use ansi_term::Colour::{Yellow, Red};
 use std::boxed::Box;
 use std::mem;
-#[derive(Clone)]
+
+#[derive(Clone,Debug)]
 pub struct ParamsConfigurator {
     // Path of the file where the parameters configuration is
     pub param_file_path: String,

@@ -13,16 +13,14 @@ use std::time::Duration;
 use EnergyType;
 use std::net::{TcpStream, Shutdown,IpAddr};
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct EnergyEval {
     pub target_path: String,
     pub bench_path: String,
     pub target_args: String,
     pub bench_args: Vec<String>,
+    pub num_iter:   u8,
 }
-
-// Number of iteration with which re-execute the same parameter configuration
-const num_iterations: u8 = 10;
 
 impl EnergyEval {
     pub fn new() -> EnergyEval {
@@ -55,15 +53,13 @@ impl EnergyEval {
 
  
         // Repeat the execution 10 times for accurate results
-        let mut nrg_vec = Vec::with_capacity(num_iterations as usize);
-        for i in 0..num_iterations {
-
-            println!("{} {:?}", Green.paint("====> Evaluation of: "), params);
-            println!("{} {}",
-                     Green.paint("====> Iteration Number for current Configuration: "),
-                     i + 1);
-
-
+        let mut nrg_vec = Vec::with_capacity(self.num_iter as usize);
+        
+        println!("{} Evaluation of: {:?}", Green.paint("====>"), params);
+        println!("{}  Waiting for {} iterations to be terminated",
+                     Green.paint("====>"),self.num_iter);
+        
+        for i in 0..self.num_iter {
 
             /// **
             /// Launch TARGET Application
@@ -116,7 +112,7 @@ impl EnergyEval {
                 let start = time::precise_time_ns();
                 let mut bench_process = Some(Command::new(cloned_self.bench_path.clone())
                     .args(cloned_self.bench_args.as_ref())
-                    .stdout(Stdio::piped())
+ 					.stderr(Stdio::piped())
                     .spawn()
                     .expect("Failed to execute Benchmark!"));
                 bench_process.as_mut().unwrap().wait().expect("Failed to wait on Benchmark");
@@ -143,9 +139,9 @@ impl EnergyEval {
                     let elapsed_time = *(elapsed_s_mutex.lock().unwrap());
                     let num_bytes = meter_proxy_c.get_num_bytes_rcvd() as f64;
                     let resp_rate = (num_bytes / elapsed_time) / 1024.0;
-                    println!("{} {:.4} KB/s",
+                   /* println!("{} {:.4} KB/s",
                              Red.paint("====> Response Rate: "),
-                             resp_rate);
+                             resp_rate);*/
                     resp_rate
                 }
                 EnergyType::latency => {
@@ -170,18 +166,17 @@ impl EnergyEval {
 
         if target_alive {
             let sum_nrg: f64 = nrg_vec.iter().sum();
-            let avg_nrg = sum_nrg / num_iterations as f64;
+            let avg_nrg = sum_nrg / self.num_iter as f64;
             match energy_type {
                 EnergyType::throughput => {
                     println!("{} {:.3} KB/s",
-                             Red.paint("====> Avg. Response Rate: "),
+                             Red.paint("====> Evaluated Avg. Response Rate: "),
                              avg_nrg);//Red.paint("Std. Dev.: "),std_dev);
                 }
                 EnergyType::latency => {
-                    println!("{} {:.3} s", Red.paint("Avg. Latency: "), avg_nrg);//Red.paint("Std. Dev.: "),std_dev);
+                    println!("{} {:.3} s", Red.paint("Evaluated Avg. Latency: "), avg_nrg);//Red.paint("Std. Dev.: "),std_dev);
                 }
             };
-            println!("Execution Terminated!!");
             println!("{}",Yellow.paint("==================================================================================================================="));
 
             return Some(avg_nrg);
@@ -264,6 +259,7 @@ impl Default for EnergyEval {
             bench_path: "".to_string(),
             target_args: "".to_string(),
             bench_args: Vec::new(),
+            num_iter:   1,
         }
     }
 }

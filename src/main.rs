@@ -53,13 +53,14 @@ use std::thread;
 
 //The Docopt usage string.
 const USAGE: &'static str = "
-Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-t] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects> --energy=<energy> --cooling=<cooling>
+Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects> [-e] --energy=<energy> [-c] --cooling=<cooling>
 Options:
     -t,    --targ=<args>     	Target Path.
     --args2targ=<args>          Arguments for Target (Specify Host and Port!).
     -b,    --bench=<args>     	Benchmark Path.
     --args2bench=<args>         Arguments for Benchmark (start on localhost:12349!).
     -ms,   --maxSteps=<args>    Max Steps of Annealing.
+    -ni,   --numIter=<args>     Number of Iterations for each stage of exploration
     -tp,   --maxTemp=<args>     Max Temperature.
     -mt,   --minTemp=<args>     Min Temperature.
     -at,   --maxAtt=<args>     	Max Attemtps.
@@ -75,6 +76,7 @@ struct Args {
     flag_targ: String,
     flag_bench: String,
     flag_maxSteps: u64,
+    flag_numIter: u8,
     flag_maxTemp: f64,
     flag_minTemp: f64,
     flag_maxAtt: u64,
@@ -116,8 +118,6 @@ fn main() {
 	
 
 	
-
-
     /// Create ParamsConfigurator useful to manage the parameters (or states)
     /// that the simulated annealing algorithm will explore. ParamsConfigurator set initial default parameters
     /// defined in the initial-params.txt input file
@@ -138,6 +138,7 @@ fn main() {
         bench_path: args.flag_bench,
         target_args: args.flag_args2targ,
         bench_args: args.flag_args2bench.split_whitespace().map(String::from).collect(),
+        num_iter: args.flag_numIter,
     };
 
 

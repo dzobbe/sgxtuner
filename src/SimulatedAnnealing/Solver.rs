@@ -24,7 +24,9 @@ use rand::thread_rng;
 use rand::distributions::{Range, IndependentSample};
 use ansi_term::Colour::Green;
 use super::Problem::Problem;
+use super::Updater::{Updater,UpdateFile};
 use super::Cooler::{Cooler, StepsCooler, TimeCooler};
+use std::fs::{File,OpenOptions};
 
 /**
  * A solver will take a problem and use simulated annealing
@@ -129,6 +131,8 @@ impl Solver {
     fn solve_step_based<P>(&self, problem: &mut P, max_steps: u64, cooler: StepsCooler) -> P::State
         where P: Problem
     {
+    	//let mut updater=UpdateFile::new();
+    	
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 
@@ -159,16 +163,20 @@ impl Solver {
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
-            println!("{} Annealing Phase - Completed Steps: {:.2}% - Time Spent until Now: {:.2} \
+            println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Time Spent until Now: {:.2} \
                       s",
-                     Green.paint("[TUNER]"),
+                     Green.paint("[TUNER]"), elapsed_steps,
                      (elapsed_steps as f64 / cooler.max_steps as f64) * 100.0,
                      elapsed_time);
             println!("{} Total Accepted Solutions: {:?} - Current Temperature: {:.2}",
                      Green.paint("[TUNER]"),
                      accepted,
                      temperature);
+           /* println!("{} Accepted State: {:?}",
+                     Green.paint("[TUNER]"),
+                     state as HashMap);*/
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
+            
 
             state = {
                 let next_state = match problem.new_state(&state, max_steps, elapsed_steps) {
@@ -194,12 +202,16 @@ impl Solver {
                                 total_improves = total_improves + 1;
                                 subsequent_improves = subsequent_improves + 1;
                             }
+                            
+                            //updater.send_update(new_energy, next_state, energy, next_state, elapsed_steps);
                             next_state
 
                         } else {
                             subsequent_improves = 0;
+                            //updater.send_update(new_energy, next_state, energy, state, elapsed_steps);
                             state
                         }
+                        
                     }
                     None => {
                         println!("{} The current configuration parameters cannot be evaluated. \
@@ -247,9 +259,10 @@ impl Solver {
         let range = Range::new(0.0, 1.0);
 
         let mut state = problem.initial_state();
-
+		
         return state;
     }
+   
 
 
     /**
