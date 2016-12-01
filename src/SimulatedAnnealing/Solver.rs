@@ -49,23 +49,6 @@ pub struct Solver {
      */
     pub max_temperature: f64,
 
-    /**
-     * The maximimum number of attempts to find a new state
-     * before lowering the temperature.
-     */
-    pub max_attempts: u64,
-
-    /**
-     * The maximum number of accepted new states before lowering
-     * the temperature.
-     */
-    pub max_accepts: u64,
-
-    /**
-     * The maximum number of rejected states before terminating the
-     * process.
-     */
-    pub max_rejects: u64,
 
     /**
      * The Cooling Schedule procedure to select
@@ -192,7 +175,6 @@ impl Solver {
 
                 let accepted_state = match problem.energy(&next_state, self.clone().energy_type) {
                     Some(new_energy) => {
-                        attempted += 1;
                         let de = new_energy - energy;
                         if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
                             accepted += 1;
@@ -223,22 +205,7 @@ impl Solver {
 
                 accepted_state
             };
-
-            if attempted >= self.max_attempts || accepted >= self.max_accepts {
-                if accepted == 0 {
-                    rejected += 1;
-                } else {
-                    rejected = 0;
-                }
-
-
-                attempted = 0;
-                accepted = 0;
-
-                if rejected >= self.max_rejects {
-                    break;
-                }
-            }
+            
 
             temperature = match self.cooling_schedule {
                 CoolingSchedule::linear => cooler.linear_cooling(elapsed_steps),
@@ -275,12 +242,9 @@ impl Solver {
 impl Default for Solver {
     fn default() -> Solver {
         Solver {
-            termination_criteria: TerminationCriteria::Max_Steps(1000000),
+            termination_criteria: TerminationCriteria::Max_Steps(10000),
             min_temperature: 2.5,
-            max_temperature: 100.0,
-            max_attempts: 50,
-            max_accepts: 10,
-            max_rejects: 4,
+            max_temperature: 1000.0,
             cooling_schedule: CoolingSchedule::exponential,
             energy_type: EnergyType::throughput,
         }

@@ -53,7 +53,7 @@ use std::thread;
 
 //The Docopt usage string.
 const USAGE: &'static str = "
-Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-at] --maxAtt=<maxAttempts> [-ac] --maxAcc=<maxAccepts> [-rj] --maxRej=<maxRejects> [-e] --energy=<energy> [-c] --cooling=<cooling>
+Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-e] --energy=<energy> [-c] --cooling=<cooling>
 Options:
     -t,    --targ=<args>     	Target Path.
     --args2targ=<args>          Arguments for Target (Specify Host and Port!).
@@ -62,10 +62,7 @@ Options:
     -ms,   --maxSteps=<args>    Max Steps of Annealing.
     -ni,   --numIter=<args>     Number of Iterations for each stage of exploration
     -tp,   --maxTemp=<args>     Max Temperature.
-    -mt,   --minTemp=<args>     Min Temperature.
-    -at,   --maxAtt=<args>     	Max Attemtps.
-    -ac,   --maxAcc=<args>     	Max Accepts.
-    -rj,   --maxRej=<args>     	Max Rejects.  
+    -mt,   --minTemp=<args>     Min Temperature. 
     -e,	   --energy=<args>      Energy to eval (latency or throughput)
     -c,    --cooling=<args>     Cooling Schedule (linear, exponential, adaptive)
 ";
@@ -79,9 +76,6 @@ struct Args {
     flag_numIter: u8,
     flag_maxTemp: f64,
     flag_minTemp: f64,
-    flag_maxAtt: u64,
-    flag_maxAcc: u64,
-    flag_maxRej: u64,
     flag_energy: EnergyType,
     flag_cooling: CoolingSchedule,
     flag_args2targ: String,
@@ -175,9 +169,6 @@ fn main() {
         termination_criteria: TerminationCriteria::Max_Steps(args.flag_maxSteps),
         min_temperature: args.flag_minTemp,
         max_temperature: args.flag_maxTemp,
-        max_attempts: args.flag_maxAtt,
-        max_accepts: args.flag_maxAcc,
-        max_rejects: args.flag_maxRej,
         energy_type: energy_type,
         cooling_schedule: cooling_schedule,
     };
