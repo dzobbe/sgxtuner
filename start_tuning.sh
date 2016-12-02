@@ -3,5 +3,5 @@ target/debug/annealing-tuner --targ=/home/ubuntu/TUD-Work/scripts/build/build/bi
 --bench=/usr/local/bin/mcperf \
 --args2bench="-p 12349 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16" \
 --maxSteps=10000 --numIter=5 --maxTemp=1000 --minTemp=2 \
---energy=throughput \
+--energy=latency \
 --cooling=exponential

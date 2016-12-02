@@ -27,6 +27,7 @@ use super::Problem::Problem;
 use super::Updater::{Updater,UpdateFile};
 use super::Cooler::{Cooler, StepsCooler, TimeCooler};
 use std::fs::{File,OpenOptions};
+use std::collections::HashMap;
 
 /**
  * A solver will take a problem and use simulated annealing
@@ -83,8 +84,7 @@ impl Solver {
     /**
      * Run the solver for a maximization problem
      */
-    pub fn solve<P>(&self, problem: &mut P) -> P::State
-        where P: Problem
+    pub fn solve(&self, problem: &mut Problem) -> HashMap<String, u32>
     {
         let best_configuration = match self.termination_criteria {
             TerminationCriteria::Max_Steps(value) => {
@@ -111,8 +111,7 @@ impl Solver {
     }
 
 
-    fn solve_step_based<P>(&self, problem: &mut P, max_steps: u64, cooler: StepsCooler) -> P::State
-        where P: Problem
+    fn solve_step_based(&self, problem: &mut Problem, max_steps: u64, cooler: StepsCooler) ->HashMap<String, u32>
     {
     	let mut updater=UpdateFile::new();
         let mut rng = thread_rng();
@@ -183,7 +182,13 @@ impl Solver {
                 let accepted_state = match problem.energy(&next_state, self.clone().energy_type) {
                     Some(new_energy) => {
                     	last_nrg=new_energy;
-                        let de = new_energy - energy;
+                        
+                        let de=match self.energy_type {
+                        	EnergyType::throughput =>  new_energy - energy,
+                			EnergyType::latency    => -(new_energy - energy) 
+                        };
+                        
+                        println!("sss: {:?}",(-de / temperature).exp() ); 
                         if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
                             accepted += 1;
                             energy = new_energy;
@@ -193,16 +198,14 @@ impl Solver {
                                 subsequent_improves = subsequent_improves + 1;
                             }
                             
-                            updater.send_update::<P>(new_energy, &next_state, energy, &next_state, elapsed_steps);
+                            updater.send_update(new_energy, &next_state, energy, &next_state, elapsed_steps);
                             next_state
 
                         } else {
                             subsequent_improves = 0;
-                            updater.send_update::<P>(new_energy, &next_state, energy, &state, elapsed_steps);
+                            updater.send_update(new_energy, &next_state, energy, &state, elapsed_steps);
                             state
                         }
-                        
-                        
                     }
                     None => {
                         println!("{} The current configuration parameters cannot be evaluated. \
@@ -217,9 +220,9 @@ impl Solver {
             
 
             temperature = match self.cooling_schedule {
-                CoolingSchedule::linear => cooler.linear_cooling(elapsed_steps),
+                CoolingSchedule::linear 	 => cooler.linear_cooling(elapsed_steps),
                 CoolingSchedule::exponential => cooler.exponential_cooling(elapsed_steps),
-                CoolingSchedule::adaptive => cooler.adaptive_cooling(),
+                CoolingSchedule::adaptive 	 => cooler.adaptive_cooling(),
             };
         }
 
@@ -228,8 +231,7 @@ impl Solver {
 
 
 
-    fn solve_time_based<P>(&self, problem: &mut P, max_time: u64, cooler: TimeCooler) -> P::State
-        where P: Problem
+    fn solve_time_based(&self, problem: &mut Problem, max_time: u64, cooler: TimeCooler) -> HashMap<String, u32>
     {
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);

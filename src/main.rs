@@ -6,8 +6,6 @@ extern crate rand;
 extern crate libc;
 extern crate time;
 extern crate ansi_term;
-extern crate mio;
-extern crate thread_id;
 extern crate pbr;
 extern crate csv;
 

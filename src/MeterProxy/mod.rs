@@ -1,7 +1,6 @@
 use lazy_static;
 use libc;
 use time;
-use thread_id;
 use ansi_term;
 use ansi_term::Colour::{Red, Yellow};
 use std::net::{TcpListener, TcpStream, Shutdown, SocketAddr,IpAddr};
@@ -13,7 +12,7 @@ use std::io::prelude::*;
 use libc::setrlimit;
 use std::collections::HashMap;
 use EnergyType;
-
+use std::sync::mpsc::{channel, Sender, Receiver};
 
 /// /////////////////////////////////////////////////////////////////////
 /// /////////////////////////////////////////////////////////////////////
@@ -41,50 +40,32 @@ impl SharedCounter {
     }
 }
 
-pub struct SharedTimeTable(Arc<Mutex<HashMap<String, u64>>>);
-impl SharedTimeTable {
+pub struct SharedTimeVec(Arc<Mutex<Vec<u64>>>);
+impl SharedTimeVec {
     fn new() -> Self {
-        SharedTimeTable(Arc::new(Mutex::new(HashMap::new())))
+        SharedTimeVec(Arc::new(Mutex::new(Vec::new())))
     }
 
-    fn insert(&self, key: String, value: u64) {
-        // let mut time_table = self.0.lock().unwrap();
-        // let _ =match time_table.remove(&key){
-        // None          => time_table.insert(key,value),
-        // Some(v_found) => time_table.insert("_".to_string()+&key,value-v_found),
-        // };
+    fn insert(&self, value: u64) {
+           let mut time_vec = self.0.lock().unwrap();
+           time_vec.push(value);
     }
 
     fn get_avg_value(&self) -> f64 {
-
-        let mut time_table = self.0.lock().unwrap();
-        let mut sum = 0;
-        let mut n = 0;
-        for (key, val) in time_table.iter() {
-            if key.starts_with("_") {
-                sum = sum + val;
-                n = n + 1;
-            }
-        }
-        println!("Num: {}", n);
-        return sum as f64 / n as f64;
+        let mut time_vec = self.0.lock().unwrap();
+        let sum: u64= time_vec.iter().sum();
+       	return sum as f64/time_vec.len() as f64;
     }
 
     fn reset(&self) {
-        let mut time_table = self.0.lock().unwrap();
-        time_table.clear();
+        let mut time_vec = self.0.lock().unwrap();
+        time_vec.clear();
     }
 
-    fn print(&self) {
-        let mut time_table = self.0.lock().unwrap();
-        for (key, val) in time_table.iter() {
-            println!("Ecco: {:?}  -  {:?}", key, val);
-        }
-    }
 }
 
 lazy_static! {
-    static ref TIME_TABLE: SharedTimeTable = {SharedTimeTable::new()};
+    static ref TIME_TABLE: SharedTimeVec   = {SharedTimeVec::new()};
     static ref NUM_BYTES : SharedCounter   = {SharedCounter::new()};
     static ref ERROR: Arc<Mutex<bool>>	   = Arc::new(Mutex::new(false));
 }
@@ -114,9 +95,8 @@ impl Meter {
             reset_lock_flag: Arc::new(RwLock::new(false)),
         }
     }
-    pub fn print(&self) {
-        TIME_TABLE.print();
-    }
+    
+    
     pub fn start(&self) {
         // Increase file descriptor resources limits (this avoids  the risk of exception: "Too many open files (os error 24)")
         let rlim = libc::rlimit {
@@ -214,20 +194,25 @@ impl Meter {
 
 
 
-        let front_copy = front.try_clone().unwrap();
-        let back_copy = back.try_clone().unwrap();
+        let front_c = front.try_clone().unwrap();
+        let back_c = back.try_clone().unwrap();
 
         let timedOut = Arc::new(AtomicBool::new(false));
-        let timedOut_copy = timedOut.clone();
+        let timedOut_c = timedOut.clone();
 
-        let id = thread_id::get();
+        
+        let latency_mutex: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+        let (tx, rx) = channel();
+        let latency_mutex_c = latency_mutex.clone();
+           
+             
 
         thread::spawn(move || {
-            Meter::keep_copying_bench_2_targ(front, back, timedOut, id);
+            Meter::keep_copying_bench_2_targ(front, back, timedOut, latency_mutex, tx);
         });
 
         thread::spawn(move || {
-            Meter::keep_copying_targ_2_bench(back_copy, front_copy, timedOut_copy, id);
+            Meter::keep_copying_targ_2_bench(back_c, front_c, timedOut_c, latency_mutex_c, rx);
         });
 
 
@@ -239,13 +224,11 @@ impl Meter {
     fn keep_copying_bench_2_targ(mut front: TcpStream,
                                  mut back: TcpStream,
                                  timedOut: Arc<AtomicBool>,
-                                 thread_id: usize) {
+                                 time_mutex: Arc<Mutex<u64>>, tx: Sender<u8>) {
 
         front.set_read_timeout(Some(Duration::new(1000, 0)));
         let mut buf = [0; 1024];
 
-        // SeqNumber for latency measuring
-        let mut seq_number = 0;
 
         loop {
 
@@ -269,9 +252,9 @@ impl Meter {
                 Ok(r) => r,
             };
 
-            TIME_TABLE.insert(thread_id.to_string() + "_" + &*seq_number.to_string(),
-                              time::precise_time_ns());
-            seq_number = seq_number + 1;
+
+            let mut start_time = time_mutex.lock().unwrap();
+            *start_time=time::precise_time_ns();
 
             timedOut.store(false, Ordering::Release);
             match back.write(&buf[0..read]) {
@@ -286,7 +269,8 @@ impl Meter {
                 }
                 Ok(..) => (),
             };
-
+			
+            tx.send(1).unwrap();
         }
 
     }
@@ -297,13 +281,11 @@ impl Meter {
     fn keep_copying_targ_2_bench(mut back: TcpStream,
                                  mut front: TcpStream,
                                  timedOut: Arc<AtomicBool>,
-                                 thread_id: usize) {
+                                 time_mutex: Arc<Mutex<u64>>, rx: Receiver<u8>) {
 
         back.set_read_timeout(Some(Duration::new(1000, 0)));
         let mut buf = [0; 1024];
 
-        // SeqNumber for latency measuring
-        let mut seq_number = 0;
 
         loop {
 
@@ -327,15 +309,16 @@ impl Meter {
                 Ok(r) => r,
             };
 
-            if seq_number > 0 {
-                TIME_TABLE.insert(thread_id.to_string() + "_" + &*(seq_number - 1).to_string(),
-                                  time::precise_time_ns());
-            }
-
-            seq_number = seq_number + 1;
+			match rx.try_recv(){
+				Ok(r) => {
+					let res = *(time_mutex.lock().unwrap());         
+					TIME_TABLE.insert(time::precise_time_ns()-res);
+				},
+				RecvError => {},
+			};
+			   
             // Increment the number of bytes read counter
             NUM_BYTES.increment(read);
-
 
 
             timedOut.store(false, Ordering::Release);

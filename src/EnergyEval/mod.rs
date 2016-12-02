@@ -178,12 +178,12 @@ impl EnergyEval {
             let avg_nrg = sum_nrg / self.num_iter as f64;
             match energy_type {
                 EnergyType::throughput => {
-                    println!("{} {:.3} KB/s",
+                    println!("{} {:.4} KB/s",
                              Red.paint("====> Evaluated Avg. Response Rate: "),
                              avg_nrg);//Red.paint("Std. Dev.: "),std_dev);
                 }
                 EnergyType::latency => {
-                    println!("{} {:.3} s", Red.paint("Evaluated Avg. Latency: "), avg_nrg);//Red.paint("Std. Dev.: "),std_dev);
+                    println!("{} {:.4} ms", Red.paint("Evaluated Avg. Latency: "), avg_nrg);
                 }
             };
             println!("{}",Yellow.paint("==================================================================================================================="));

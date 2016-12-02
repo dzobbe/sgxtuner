@@ -18,7 +18,7 @@ pub struct UpdateInflux {
 
 pub trait Updater {
 	fn new() -> Self;
-    fn send_update<P>(& mut self, measured_val: f64, measured_state: &P::State, best_val :f64, best_state: &P::State,num_iter: u64) where P: Problem;
+    fn send_update(& mut self, measured_val: f64, measured_state: &HashMap<String, u32>, best_val :f64, best_state: &HashMap<String, u32>,num_iter: u64);
 }
 
 
@@ -30,7 +30,7 @@ impl Updater for UpdateInflux {
         }
 	}
 	
-    fn send_update<P>(& mut self, measured_val: f64, measured_state: &P::State, best_val :f64, best_state: &P::State,num_iter: u64) where P: Problem {
+    fn send_update(& mut self, measured_val: f64, measured_state: &HashMap<String, u32>, best_val :f64, best_state: &HashMap<String, u32>,num_iter: u64)  {
     	
     }
 }
@@ -76,21 +76,21 @@ impl Updater for UpdateFile {
     } 
 	
 	
-	fn send_update<P>(&mut self, measured_val: f64, measured_state: &P::State, best_val :f64, best_state: &P::State,num_iter: u64) where P: Problem {
+	fn send_update(&mut self, measured_val: f64, measured_state: &HashMap<String, u32>, best_val :f64, best_state: &HashMap<String, u32>,num_iter: u64) {
 
 		let mut vec_2_write: Vec<String>=Vec::new();
 		
 		
 		vec_2_write.push(best_val.to_string());
 		for param_name in self.ordered_params.clone().iter().cloned(){
-			//vec_2_write.push((*best_state).get(param_name));
+			vec_2_write.push((best_state.get(&param_name).unwrap()).to_string());
 		}
 		
 		
 		vec_2_write.push(measured_val.to_string());
 		 
 		for param_name in self.ordered_params.clone().iter().cloned(){
-			//vec_2_write.push((*measured_state as HashMap<String,u32>).get(param_name));
+			vec_2_write.push((measured_state.get(&param_name).unwrap()).to_string());
 		}       
 		
 	    let result = self.csv_writer.encode(vec_2_write);

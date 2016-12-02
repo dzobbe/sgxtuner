@@ -89,7 +89,6 @@ In this example we run the `annealing-tuner` on memcached using as a benchmark t
 
 ## TODOs and Open Issues
 The following issues and TODOs need to be solved:
-* Currently there are issues with the measurement of the latency enforced by the `MeterProxy`. Therefore the only energy that can be evaluated at the moment is the throughput of responses.
 * The `adaptive` cooling schedule still need to be developed.
 * The provision of the metrics to `InfluxDB` and then to the `Chronograf`need to be developed
 * A parallel version of the algorithm is under construction
