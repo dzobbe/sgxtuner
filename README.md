@@ -10,15 +10,15 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
 1. Clone the [source] with `git`:
 
    ```sh
-   $ git clone https://github.com/dzobbe/sgxmusl-tuner.git
-   $ cd sgxmusl-tuner
+   $ git clone https://github.com/dzobbe/annealing-tuner.git
+   $ cd annealing-tuner
    ```
 2. Build
 
      ```sh
     $ sudo cargo build
     ```
-3. Configure the parameters in the `params.conf` file. The syntax is the following:
+3. Configure the parameters in the `params.conf` file. In a default version parameters are set by the tuner as environment variables. The syntax is the following:
 
    ```
    [Param_name]:[min_value,max_value,step]:[initial_value]
@@ -60,6 +60,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
     -c,    --cooling=<args>      #Cooling Schedule (linear, exponential, adaptive)
    ```
    
+5. Read the results in the `results.csv` file generated. This will include as many lines as the number of annealing steps conducted. Each line has the best configuration of parameters and also the best energy measured with that configuration until that step. Furthermore, the line of the CSV file includes also the results of the evaluation for that step with a specific configuration of parameters.
 
 ## Example
 In this example we run the `annealing-tuner` on memcached using as a benchmark the [mcperf](https://github.com/twitter/twemperf) tool.
@@ -78,7 +79,7 @@ In this example we run the `annealing-tuner` on memcached using as a benchmark t
 2.  Run the tuner. Yes I know, the arguments for the `sgxmusl-tuner` are too much. An acquisition through an .xml configuration file is one of the TODOs. Anyway, for the moment the `start-tuning.sh` script can help.
 
    ```sh
-   $ target/debug/sgxmusl-tuner --targ=$MEMCACHED_HOME/bin/memcached \
+   $ target/debug/annealing-tuner --targ=$MEMCACHED_HOME/bin/memcached \
     --args2targ="-l 127.0.0.1 -p 12347" \
     --bench=$MCPERF_HOME/bin/mcperf \
     --args2bench="-p 12349 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16" \
@@ -86,6 +87,7 @@ In this example we run the `annealing-tuner` on memcached using as a benchmark t
     --energy=throughput \
     --cooling=exponential
    ```
+Run the tuner. 
 
 ## TODOs and Open Issues
 The following issues and TODOs need to be solved:
