@@ -10,8 +10,8 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
 1. Clone the [source] with `git`:
 
    ```sh
-   $ git clone https://github.com/dzobbe/sgxmusl-tuner.git
-   $ cd sgxmusl-tuner
+   $ git clone https://github.com/dzobbe/annealing-tuner.git
+   $ cd annealing-tuner
    ```
 2. Build
 
