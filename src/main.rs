@@ -96,7 +96,6 @@ The Sgx-Musl Auto Tuner is a tool able to needs in input:
 	- Probability p_restart with which re-initialize the search at random
 	- Fixed number s of random moves for perturbation
 **/
-
 /**
 Sgx-Musl Auto Tuner Entry Point
 **/
@@ -110,9 +109,9 @@ fn main() {
         .unwrap_or_else(|e| e.exit());
     println!("{:?}", args);
 
-	
 
-	
+
+
     /// Create ParamsConfigurator useful to manage the parameters (or states)
     /// that the simulated annealing algorithm will explore. ParamsConfigurator set initial default parameters
     /// defined in the initial-params.txt input file

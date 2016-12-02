@@ -13,7 +13,7 @@ use super::MeterProxy;
 use ansi_term::Colour::{Red, Yellow, Green};
 use std::time::Duration;
 use EnergyType;
-use std::net::{TcpStream, Shutdown,IpAddr};
+use std::net::{TcpStream, Shutdown, IpAddr};
 
 #[derive(Clone,Debug,RustcEncodable)]
 pub struct EnergyEval {
@@ -21,7 +21,7 @@ pub struct EnergyEval {
     pub bench_path: String,
     pub target_args: String,
     pub bench_args: Vec<String>,
-    pub num_iter:   u8,
+    pub num_iter: u8,
 }
 
 impl EnergyEval {
@@ -43,9 +43,9 @@ impl EnergyEval {
         let perf_metrics_handler = PerfCounters::PerfMetrics::new();
         let target_port = self.get_target_port();
         let target_addr = self.get_target_addr();
-        
+
         let mut target_alive: bool = false;
- 
+
         /// Set the environement variables that will configure the parameters
         /// needed by the target application
         ///
@@ -53,22 +53,23 @@ impl EnergyEval {
             env::set_var(param_name.to_string(), param_value.to_string());
         }
 
- 
+
         // Repeat the execution 10 times for accurate results
         let mut nrg_vec = Vec::with_capacity(self.num_iter as usize);
-        
+
         println!("{} Evaluation of: {:?}", Green.paint("====>"), params);
         println!("{} Waiting for {} iterations to complete",
-                     Green.paint("====>"),self.num_iter);
-        
-	    let mut pb = ProgressBar::new(self.num_iter as u64);
-	    pb.format("╢▌▌░╟");
-		
-        
-        
+                 Green.paint("====>"),
+                 self.num_iter);
+
+        let mut pb = ProgressBar::new(self.num_iter as u64);
+        pb.format("╢▌▌░╟");
+
+
+
         for i in 0..self.num_iter {
-			
-			pb.inc();
+
+            pb.inc();
             /// **
             /// Launch TARGET Application
             /// *
@@ -84,20 +85,20 @@ impl EnergyEval {
             thread::sleep(Duration::from_millis(2000));
 
 
-			//Check if the target is alive
-            target_alive=self.check_target_alive(target_addr.clone(),target_port);
+            // Check if the target is alive
+            target_alive = self.check_target_alive(target_addr.clone(), target_port);
             if target_alive == false {
-            	target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
+                target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
                 break;
             }
 
-			
+
 
             /// **
             /// Start METER-PROXY, which will interpose between the Target and the
             /// Benchmark apps to extract metrics for the energy evaluation
             /// *
-            let meter_proxy = MeterProxy::Meter::new(target_addr.clone(),target_port);
+            let meter_proxy = MeterProxy::Meter::new(target_addr.clone(), target_port);
             let meter_proxy_c = meter_proxy.clone();
             let child_meter_proxy = thread::spawn(move || {
                 meter_proxy.start();
@@ -120,7 +121,7 @@ impl EnergyEval {
                 let start = time::precise_time_ns();
                 let mut bench_process = Some(Command::new(cloned_self.bench_path.clone())
                     .args(cloned_self.bench_args.as_ref())
- 					.stderr(Stdio::piped())
+                    .stderr(Stdio::piped())
                     .spawn()
                     .expect("Failed to execute Benchmark!"));
                 bench_process.as_mut().unwrap().wait().expect("Failed to wait on Benchmark");
@@ -147,9 +148,9 @@ impl EnergyEval {
                     let elapsed_time = *(elapsed_s_mutex.lock().unwrap());
                     let num_bytes = meter_proxy_c.get_num_bytes_rcvd() as f64;
                     let resp_rate = (num_bytes / elapsed_time) / 1024.0;
-                   /* println!("{} {:.4} KB/s",
-                             Red.paint("====> Response Rate: "),
-                             resp_rate);*/
+                    // println!("{} {:.4} KB/s",
+                    // Red.paint("====> Response Rate: "),
+                    // resp_rate);
                     resp_rate
                 }
                 EnergyType::latency => {
@@ -171,8 +172,8 @@ impl EnergyEval {
 
         }
 
-		pb.finish_print("");
-        
+        pb.finish_print("");
+
         if target_alive {
             let sum_nrg: f64 = nrg_vec.iter().sum();
             let avg_nrg = sum_nrg / self.num_iter as f64;
@@ -183,7 +184,9 @@ impl EnergyEval {
                              avg_nrg);//Red.paint("Std. Dev.: "),std_dev);
                 }
                 EnergyType::latency => {
-                    println!("{} {:.4} ms", Red.paint("Evaluated Avg. Latency: "), avg_nrg);
+                    println!("{} {:.4} ms",
+                             Red.paint("Evaluated Avg. Latency: "),
+                             avg_nrg);
                 }
             };
             println!("{}",Yellow.paint("==================================================================================================================="));
@@ -194,17 +197,17 @@ impl EnergyEval {
             return None;
         }
 
-	
+
         // println!("Latency {:?} ms", meter_proxy_c.get_latency_ms());
         // meter_proxy_c.print();
-    } 
-       
-   fn check_target_alive(&self, target_addr :String, target_port: u16) -> bool{
-   		 // Realize one fake connection to check if the target is alive
-         // It can happen that the configuration of parameters does not allow to start the target.
-         // In that case the energy returned by this function is None
+    }
+
+    fn check_target_alive(&self, target_addr: String, target_port: u16) -> bool {
+        // Realize one fake connection to check if the target is alive
+        // It can happen that the configuration of parameters does not allow to start the target.
+        // In that case the energy returned by this function is None
         let targ_addr: IpAddr = target_addr.parse()
-              .expect("Unable to parse Target Address");
+            .expect("Unable to parse Target Address");
         let target_alive = match TcpStream::connect((targ_addr, target_port)) {
             Err(e) => {
                 println!("{} The Target Application seems down. Maybe a bad configuration: {}",
@@ -219,47 +222,47 @@ impl EnergyEval {
             }
         };
         return target_alive;
-   }
-                                 
- 	fn get_target_port(&self) -> u16 {
- 		let args=self.target_args.split_whitespace(); 
-		let mut take_next=false;	
-		let mut port: Option<u16>=None; 
-		for arg in args{ 
-			if take_next{
-				port=Some(arg.parse().unwrap()); 
-				break
-			}
-			if arg=="-p" || arg=="--port"{
-				take_next=true;
- 		 	}
- 		 }
- 		
- 		match port {
- 			Some(p) => return p,
- 			None 	=> panic!("Please specify the TARGET Port in the target arguments"),
- 		}
- 	}
- 	
- 	fn get_target_addr(&self) -> String {
- 		let args=self.target_args.split_whitespace(); 
-		let mut take_next=false;	
-		let mut addr: Option<String>=None; 
-		for arg in args{ 
-			if take_next{
-				addr=Some(arg.parse().unwrap());
-				break;
-			}
-			if arg=="-l" || arg=="--address" || arg=="-h" || arg=="--host"{
-				take_next=true;
- 		 	} 
- 		 } 
+    }
 
- 		match addr {
- 			Some(a) => return a,
- 			None 	=> panic!("Please specify the TARGET Port in the target arguments"),
- 		}
- 	}
+    fn get_target_port(&self) -> u16 {
+        let args = self.target_args.split_whitespace();
+        let mut take_next = false;
+        let mut port: Option<u16> = None;
+        for arg in args {
+            if take_next {
+                port = Some(arg.parse().unwrap());
+                break;
+            }
+            if arg == "-p" || arg == "--port" {
+                take_next = true;
+            }
+        }
+
+        match port {
+            Some(p) => return p,
+            None => panic!("Please specify the TARGET Port in the target arguments"),
+        }
+    }
+
+    fn get_target_addr(&self) -> String {
+        let args = self.target_args.split_whitespace();
+        let mut take_next = false;
+        let mut addr: Option<String> = None;
+        for arg in args {
+            if take_next {
+                addr = Some(arg.parse().unwrap());
+                break;
+            }
+            if arg == "-l" || arg == "--address" || arg == "-h" || arg == "--host" {
+                take_next = true;
+            }
+        }
+
+        match addr {
+            Some(a) => return a,
+            None => panic!("Please specify the TARGET Port in the target arguments"),
+        }
+    }
 }
 
 impl Default for EnergyEval {
@@ -269,7 +272,7 @@ impl Default for EnergyEval {
             bench_path: "".to_string(),
             target_args: "".to_string(),
             bench_args: Vec::new(),
-            num_iter:   1,
+            num_iter: 1,
         }
     }
 }

@@ -28,7 +28,6 @@ use rustc_serialize::Encodable;
  * state and generate new states.
  */
 pub trait Problem {
-
     /**
      * This function should generate an initial state for the problem.
      */
@@ -62,13 +61,11 @@ pub struct ProblemInputs {
 
 
 impl Problem for ProblemInputs {
-	
-	
     /**
 	Start Extraction of Initial State: it takes the Parameters Configuration 
     given in input
 	**/
-    fn initial_state(&mut self) -> HashMap<String, u32>{
+    fn initial_state(&mut self) -> HashMap<String, u32> {
         return self.params_configurator.get_initial_param_conf();
     }
 
@@ -92,5 +89,4 @@ impl Problem for ProblemInputs {
                  -> Option<HashMap<String, u32>> {
         return self.params_configurator.get_rand_neighborhood(state, max_steps, current_step);
     }
-                 
 }

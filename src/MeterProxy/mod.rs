@@ -3,7 +3,7 @@ use libc;
 use time;
 use ansi_term;
 use ansi_term::Colour::{Red, Yellow};
-use std::net::{TcpListener, TcpStream, Shutdown, SocketAddr,IpAddr};
+use std::net::{TcpListener, TcpStream, Shutdown, SocketAddr, IpAddr};
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{thread, str};
@@ -47,21 +47,20 @@ impl SharedTimeVec {
     }
 
     fn insert(&self, value: u64) {
-           let mut time_vec = self.0.lock().unwrap();
-           time_vec.push(value);
+        let mut time_vec = self.0.lock().unwrap();
+        time_vec.push(value);
     }
 
     fn get_avg_value(&self) -> f64 {
         let mut time_vec = self.0.lock().unwrap();
-        let sum: u64= time_vec.iter().sum();
-       	return sum as f64/time_vec.len() as f64;
+        let sum: u64 = time_vec.iter().sum();
+        return sum as f64 / time_vec.len() as f64;
     }
 
     fn reset(&self) {
         let mut time_vec = self.0.lock().unwrap();
         time_vec.clear();
     }
-
 }
 
 lazy_static! {
@@ -72,8 +71,6 @@ lazy_static! {
 
 /// /////////////////////////////////////////////////////////////////////
 /// /////////////////////////////////////////////////////////////////////
-
-
 /**
 The MeterProxy is a proxy which interposes between the TARGET and the BENCHMARK application to measure 
 performance metrics and use them as energy for the simulated annealing algorithm.
@@ -81,7 +78,7 @@ It measures both Throughput and Latency of the TARGET application under test.
 **/
 #[derive(Clone)]
 pub struct Meter {
-	pub a_target: String,
+    pub a_target: String,
     pub p_target: u16,
     pub reset_lock_flag: Arc<RwLock<bool>>,
 }
@@ -95,8 +92,8 @@ impl Meter {
             reset_lock_flag: Arc::new(RwLock::new(false)),
         }
     }
-    
-    
+
+
     pub fn start(&self) {
         // Increase file descriptor resources limits (this avoids  the risk of exception: "Too many open files (os error 24)")
         let rlim = libc::rlimit {
@@ -173,10 +170,10 @@ impl Meter {
 
     fn start_pipe(front: TcpStream, target_addr: String, target_port: u16) {
 
-		let targ_addr: IpAddr = target_addr.parse()
+        let targ_addr: IpAddr = target_addr.parse()
             .expect("Unable to parse Target Address");
         let mut back = match TcpStream::connect((targ_addr, target_port)) {
-            Err(e) => { 
+            Err(e) => {
                 let mut err = ERROR.lock().unwrap();
                 if *err == false {
                     println!("{} Unable to connect to the Target Application. Maybe a bad \
@@ -200,12 +197,12 @@ impl Meter {
         let timedOut = Arc::new(AtomicBool::new(false));
         let timedOut_c = timedOut.clone();
 
-        
+
         let latency_mutex: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
         let (tx, rx) = channel();
         let latency_mutex_c = latency_mutex.clone();
-           
-             
+
+
 
         thread::spawn(move || {
             Meter::keep_copying_bench_2_targ(front, back, timedOut, latency_mutex, tx);
@@ -224,7 +221,8 @@ impl Meter {
     fn keep_copying_bench_2_targ(mut front: TcpStream,
                                  mut back: TcpStream,
                                  timedOut: Arc<AtomicBool>,
-                                 time_mutex: Arc<Mutex<u64>>, tx: Sender<u8>) {
+                                 time_mutex: Arc<Mutex<u64>>,
+                                 tx: Sender<u8>) {
 
         front.set_read_timeout(Some(Duration::new(1000, 0)));
         let mut buf = [0; 1024];
@@ -254,7 +252,7 @@ impl Meter {
 
 
             let mut start_time = time_mutex.lock().unwrap();
-            *start_time=time::precise_time_ns();
+            *start_time = time::precise_time_ns();
 
             timedOut.store(false, Ordering::Release);
             match back.write(&buf[0..read]) {
@@ -269,7 +267,7 @@ impl Meter {
                 }
                 Ok(..) => (),
             };
-			
+
             tx.send(1).unwrap();
         }
 
@@ -281,7 +279,8 @@ impl Meter {
     fn keep_copying_targ_2_bench(mut back: TcpStream,
                                  mut front: TcpStream,
                                  timedOut: Arc<AtomicBool>,
-                                 time_mutex: Arc<Mutex<u64>>, rx: Receiver<u8>) {
+                                 time_mutex: Arc<Mutex<u64>>,
+                                 rx: Receiver<u8>) {
 
         back.set_read_timeout(Some(Duration::new(1000, 0)));
         let mut buf = [0; 1024];
@@ -309,14 +308,14 @@ impl Meter {
                 Ok(r) => r,
             };
 
-			match rx.try_recv(){
-				Ok(r) => {
-					let res = *(time_mutex.lock().unwrap());         
-					TIME_TABLE.insert(time::precise_time_ns()-res);
-				},
-				RecvError => {},
-			};
-			   
+            match rx.try_recv() {
+                Ok(r) => {
+                    let res = *(time_mutex.lock().unwrap());
+                    TIME_TABLE.insert(time::precise_time_ns() - res);
+                }
+                RecvError => {}
+            };
+
             // Increment the number of bytes read counter
             NUM_BYTES.increment(read);
 
