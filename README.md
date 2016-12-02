@@ -1,5 +1,5 @@
-# sgxmusl-tuner (Work In Progress)
-A tool for automatic tuning of SGX Musl library parameters written in Rust. The application searches for the best configuration parameters using the Simulated Annealing algorithm (https://en.wikipedia.org/wiki/Simulated_annealing), a stochastic process for iterated local search.
+# annealing-tuner (Work In Progress)
+A tool for automatic tuning of client-server applications parameters. The application searches for the best configuration parameters using the Simulated Annealing algorithm (https://en.wikipedia.org/wiki/Simulated_annealing), a stochastic process for iterated local search.
 
 ## Requirements
 Of course, you will need Rust installed. If you haven't already, get it here: [rust-lang.org](https://www.rust-lang.org). Also you need [Cargo](https://crates.io) to easily compile. The rustc compiler version required is the 1.15.0-nightly.
@@ -18,7 +18,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
      ```sh
     $ sudo cargo build
     ```
-3. Configure the SGX-MUSL parameters in the `params.conf` file. The syntax is the following:
+3. Configure the parameters in the `params.conf` file. The syntax is the following:
 
    ```
    [Param_name]:[min_value,max_value,step]:[initial_value]
@@ -41,7 +41,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    ⚠️ **Note 2** - The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact, automatically searches in the Target arguments for the first occurrences of `-p/--port` and `-l/-h/--address/--host`. 
    
    ```sh
-   $ Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
+   $ Usage:   annealing-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
    --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps>   \
    [-ni] --numIter=<numIter>        [-tp] --maxTemp=<maxTemperature>           \
    [-mt] --minTemp=<minTemperature> [-e] --energy=<energy>                     \
@@ -62,7 +62,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
    
 
 ## Example
-In this example we run the `sgxmusl-tuner` on memcached using as a benchmark the [mcperf](https://github.com/twitter/twemperf) tool.
+In this example we run the `annealing-tuner` on memcached using as a benchmark the [mcperf](https://github.com/twitter/twemperf) tool.
 
 1. Configure the SGX-MUSL parameters in the `params.conf` file. 
 

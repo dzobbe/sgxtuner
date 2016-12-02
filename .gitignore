@@ -2,3 +2,5 @@ Cargo.lock
 target
 *.bk.rs
 *.rs.bk
+*.csv
+*.log

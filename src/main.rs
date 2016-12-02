@@ -8,6 +8,9 @@ extern crate time;
 extern crate ansi_term;
 extern crate mio;
 extern crate thread_id;
+extern crate pbr;
+extern crate csv;
+
 #[macro_use]
 extern crate lazy_static;
 // extern crate influent;

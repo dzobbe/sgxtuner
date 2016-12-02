@@ -11,7 +11,7 @@ use ansi_term::Colour::{Yellow, Red};
 use std::boxed::Box;
 use std::mem;
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,RustcEncodable)]
 pub struct ParamsConfigurator {
     // Path of the file where the parameters configuration is
     pub param_file_path: String,
@@ -30,6 +30,7 @@ impl ParamsConfigurator {
     pub fn new() -> ParamsConfigurator {
         Default::default()
     }
+
 
     /**
 	Access the initial-params.conf file and extract the info on parameters to tune
@@ -115,7 +116,7 @@ impl ParamsConfigurator {
                      Yellow.paint("Elements ==> "),
                      space_state_elems_c);
 
-            println!("{}",Red.paint("**************************************************************************************************"));
+            println!("{}",Red.paint("*******************************************************************************************************************"));
 
         }
 

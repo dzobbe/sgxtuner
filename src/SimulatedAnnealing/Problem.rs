@@ -20,14 +20,15 @@ use Parameters;
 use EnergyType;
 use EnergyEval;
 use std::collections::HashMap;
-
+use std::fmt::Debug;
+use rustc_serialize::Encodable;
 /**
  * A problem represents something to be solved using simulated
  * annealing, and provides methods to calculate the energy of a
  * state and generate new states.
  */
-pub trait Problem {
-    type State;
+pub trait Problem : Debug + Encodable{
+    type State : Debug + Encodable;
 
     /**
      * This function should generate an initial state for the problem.
@@ -54,6 +55,7 @@ pub trait Problem {
                  -> Option<Self::State>;
 }
 
+#[derive(Debug, RustcEncodable)]
 pub struct ProblemInputs {
     pub params_configurator: Parameters::ParamsConfigurator,
     pub energy_evaluator: EnergyEval::EnergyEval,
@@ -62,7 +64,8 @@ pub struct ProblemInputs {
 
 impl Problem for ProblemInputs {
     type State = HashMap<String, u32>;
-
+	
+	
     /**
 	Start Extraction of Initial State: it takes the Parameters Configuration 
     given in input
@@ -91,4 +94,5 @@ impl Problem for ProblemInputs {
                  -> Option<Self::State> {
         return self.params_configurator.get_rand_neighborhood(state, max_steps, current_step);
     }
+                 
 }

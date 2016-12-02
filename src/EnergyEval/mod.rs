@@ -1,5 +1,7 @@
 use time;
 use libc;
+use pbr;
+use pbr::ProgressBar;
 use std::str;
 use std::process::{Command, Stdio};
 use std::{thread, env};
@@ -13,7 +15,7 @@ use std::time::Duration;
 use EnergyType;
 use std::net::{TcpStream, Shutdown,IpAddr};
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,RustcEncodable)]
 pub struct EnergyEval {
     pub target_path: String,
     pub bench_path: String,
@@ -56,11 +58,17 @@ impl EnergyEval {
         let mut nrg_vec = Vec::with_capacity(self.num_iter as usize);
         
         println!("{} Evaluation of: {:?}", Green.paint("====>"), params);
-        println!("{}  Waiting for {} iterations to be terminated",
+        println!("{} Waiting for {} iterations to complete",
                      Green.paint("====>"),self.num_iter);
         
+	    let mut pb = ProgressBar::new(self.num_iter as u64);
+	    pb.format("╢▌▌░╟");
+		
+        
+        
         for i in 0..self.num_iter {
-
+			
+			pb.inc();
             /// **
             /// Launch TARGET Application
             /// *
@@ -163,7 +171,8 @@ impl EnergyEval {
 
         }
 
-
+		pb.finish_print("");
+        
         if target_alive {
             let sum_nrg: f64 = nrg_vec.iter().sum();
             let avg_nrg = sum_nrg / self.num_iter as f64;
@@ -185,6 +194,7 @@ impl EnergyEval {
             return None;
         }
 
+	
         // println!("Latency {:?} ms", meter_proxy_c.get_latency_ms());
         // meter_proxy_c.print();
     } 

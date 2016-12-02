@@ -114,8 +114,7 @@ impl Solver {
     fn solve_step_based<P>(&self, problem: &mut P, max_steps: u64, cooler: StepsCooler) -> P::State
         where P: Problem
     {
-    	//let mut updater=UpdateFile::new();
-    	
+    	let mut updater=UpdateFile::new();
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 
@@ -141,6 +140,8 @@ impl Solver {
         let mut rejected = 0;
         let mut total_improves = 0;
         let mut subsequent_improves = 0;
+		let mut last_nrg=energy;
+
 
         start_time = time::precise_time_ns();
 
@@ -158,12 +159,12 @@ impl Solver {
                      accepted,
                      temperature,
                      elapsed_time);
-           /* println!("{} Accepted State: {:?}",
+            println!("{} Accepted State: {:?}",
                      Green.paint("[TUNER]"),
-                     state);*/
-            println!("{} Accepted Energy: {:.4}",
+                     state);
+            println!("{} Accepted Energy: {:.4} - Last Measured Energy: {:.4}",
                      Green.paint("[TUNER]"),
-                     energy);
+                     energy,last_nrg);
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
             
 
@@ -181,6 +182,7 @@ impl Solver {
 
                 let accepted_state = match problem.energy(&next_state, self.clone().energy_type) {
                     Some(new_energy) => {
+                    	last_nrg=new_energy;
                         let de = new_energy - energy;
                         if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
                             accepted += 1;
@@ -191,12 +193,12 @@ impl Solver {
                                 subsequent_improves = subsequent_improves + 1;
                             }
                             
-                            //updater.send_update(new_energy, next_state, energy, next_state, elapsed_steps);
+                            updater.send_update::<P>(new_energy, &next_state, energy, &next_state, elapsed_steps);
                             next_state
 
                         } else {
                             subsequent_improves = 0;
-                            //updater.send_update(new_energy, next_state, energy, state, elapsed_steps);
+                            updater.send_update::<P>(new_energy, &next_state, energy, &state, elapsed_steps);
                             state
                         }
                         
