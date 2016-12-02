@@ -188,7 +188,6 @@ impl Solver {
                 			EnergyType::latency    => -(new_energy - energy) 
                         };
                         
-                        println!("sss: {:?}",(-de / temperature).exp() ); 
                         if de > 0.0 || range.ind_sample(&mut rng) <= (-de / temperature).exp() {
                             accepted += 1;
                             energy = new_energy;
