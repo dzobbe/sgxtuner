@@ -20,11 +20,12 @@ use time;
 use CoolingSchedule;
 use EnergyType;
 use TerminationCriteria;
+use super::super::ResultsEmitter;
+use ResultsEmitter::Emitter;
 use rand::thread_rng;
 use rand::distributions::{Range, IndependentSample};
 use ansi_term::Colour::Green;
 use super::Problem::Problem;
-use super::Updater::{Updater, UpdateFile};
 use super::Cooler::{Cooler, StepsCooler, TimeCooler};
 use std::fs::{File, OpenOptions};
 use std::collections::HashMap;
@@ -114,7 +115,8 @@ impl Solver {
                         max_steps: u64,
                         cooler: StepsCooler)
                         -> HashMap<String, u32> {
-        let mut updater = UpdateFile::new();
+                        	
+        let mut results_emitter = ResultsEmitter::Emitter2File::new();
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 
@@ -171,6 +173,7 @@ impl Solver {
 
 
             state = {
+            	
                 let next_state = match problem.new_state(&state, max_steps, elapsed_steps) {
                     // There is a neighborhood available
                     Some(n_s) => n_s,
@@ -180,7 +183,7 @@ impl Solver {
                                  Green.paint("[TUNER]"));
                         break;
                     }
-                };
+                }; 
 
                 let accepted_state = match problem.energy(&next_state, self.clone().energy_type) {
                     Some(new_energy) => {
@@ -200,7 +203,7 @@ impl Solver {
                                 subsequent_improves = subsequent_improves + 1;
                             }
 
-                            updater.send_update(new_energy,
+                            results_emitter.send_update(new_energy,
                                                 &next_state,
                                                 energy,
                                                 &next_state,
@@ -209,7 +212,7 @@ impl Solver {
 
                         } else {
                             subsequent_improves = 0;
-                            updater.send_update(new_energy,
+                            results_emitter.send_update(new_energy,
                                                 &next_state,
                                                 energy,
                                                 &state,

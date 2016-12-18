@@ -1,22 +1,31 @@
+
+use influent::create_client;
+use influent::client::{Client, Credentials};
+use influent::measurement::{Measurement, Value};
+
 use csv;
 use Parameters;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::io::{BufWriter, BufReader, BufRead};
 use std::collections::HashMap;
-use super::Problem::Problem;
 
 
-pub struct UpdateFile {
+pub struct Emitter2File {
     csv_writer: csv::Writer<File>,
     ordered_params: Vec<String>,
 }
 
-pub struct UpdateInflux {
-    
+pub struct Emitter2Influx {
+    host:	  String,
+	port:	  u32,
+	client:	  Client,
 }
 
-pub trait Updater {
+
+
+
+pub trait Emitter {
     fn new() -> Self;
     fn send_update(&mut self,
                    measured_val: f64,
@@ -28,10 +37,27 @@ pub trait Updater {
 
 
 
-
-impl Updater for UpdateInflux {
-    fn new() -> UpdateInflux {
-        UpdateInflux {}
+/*impl Emitter for Emitter2Influx {
+    fn new(h: String, p: u16, user: String, pwd: String, db: String) -> Emitter2Influx {
+        
+        // prepare client
+		let credentials = Credentials {
+		    username: user,
+		    password: pwd,
+		    database: db
+		};
+		
+		let addr="http://".to_string() + h + p;
+		let hosts = vec![addr];
+		
+		let c = create_client(credentials, hosts);
+		
+		Emitter2Influx {
+			client:   c,
+    	    host:	  h,
+			port:	  p,
+        	}
+        
     }
 
     fn send_update(&mut self,
@@ -40,13 +66,24 @@ impl Updater for UpdateInflux {
                    best_val: f64,
                    best_state: &HashMap<String, u32>,
                    num_iter: u64) {
+                   	           	
+	   	// prepare measurement
+		let mut measurement = Measurement::new("measured_nrg");
+		//measurement.add_field("some_field", Value::String("hello"));
+		//measurement.add_tag("some_region", "Moscow");
+		
+		self.client.write_one(measurement, Some(measured_val));
+		
+		// prepare measurement
+		let mut measurement = Measurement::new("best_nrg");
+		self.client.write_one(measurement, Some(best_val));
 
     }
-}
+}*/
 
 
 
-impl Updater for UpdateFile {
+impl Emitter for Emitter2File {
     fn new() -> Self {
         let mut temp_vec: Vec<String> = Vec::new();
 
@@ -78,7 +115,7 @@ impl Updater for UpdateFile {
 
         wtr.flush();
 
-        UpdateFile {
+        Emitter2File {
             csv_writer: wtr,
             ordered_params: temp_vec,
         }

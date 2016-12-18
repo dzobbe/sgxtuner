@@ -144,6 +144,29 @@ impl ParamsConfigurator {
     }
 
 
+	pub fn get_neigh_one_varying(&mut self ,current_state: &HashMap<String, u32> ) -> Vec<HashMap<String, u32>> {
+				
+		let mut neighborhoods: Vec<HashMap<String, u32>>=Vec::new();
+		
+		neighborhoods.clear();
+		
+        for (param_name, space_state_vec) in self.params_space_state.iter() {
+        	
+        	//let num_varying_params=(space_state_vec.len() as f64 *0.7) as usize;
+            for param_values in space_state_vec.iter() {
+                let mut temp = current_state.clone();
+                *(temp).get_mut(param_name).unwrap() = *param_values;
+                neighborhoods.push(temp);
+            }
+        }
+        println!("Created the vector of Neighborhoods, composed by {:?} parameter configurations",
+                 neighborhoods.len());
+        return neighborhoods;
+    }
+
+
+
+
     /**
 	Function that returns a random neighborhood of the state given in input. The Neighborhood evaluation is performed in 
 	an adaptive way. At the beginning of the Annealing the space of Neighborhoods will be large (60% of the parameters will vary).
@@ -156,7 +179,7 @@ impl ParamsConfigurator {
                                  -> Option<HashMap<String, u32>> {
 
 
-        // Evaluate the coefficient with which decrease the size of neighborhood selection. The factor will
+        // Evaluate the coefficient with which decrease the size of neighborhood selection (the number of parameters to vary). The factor will
         // decrease every period_of_variation. The initial value of the factor has been set to 0.6. Therefore,
         // 60% of the parameters will vary at the beginning and then such a value will decrease of 10% every period
         let period_of_variation: f64 = max_anneal_steps as f64 /
@@ -164,19 +187,20 @@ impl ParamsConfigurator {
         let decreasing_factor: f64 = initial_decreasing_factor -
                                      ((current_anneal_step as f64 / period_of_variation).floor()) /
                                      10.0;
-
         // Evaluate the number of varying parameters based on factor evaluated before
         let mut num_params_2_vary = (params_state.len() as f64 * decreasing_factor) as usize;
 
+
         let mut new_params_state: HashMap<String, u32> = HashMap::new();
+        //Temp vector for the history
         let mut state_4_history: Vec<u8> = vec!(0;params_state.len());
 
         // The HashMap iterator provides (key,value) pair in a random order
         for (param_name, param_current_value) in params_state.iter() {
-            let current_space_state = self.params_space_state.get(param_name).unwrap();
+            let param_space_state = self.params_space_state.get(param_name).unwrap();
             if num_params_2_vary > 0 {
                 // If there are values that can be changed take
-                let new_value = rand::thread_rng().choose(&current_space_state).unwrap();
+                let new_value = rand::thread_rng().choose(&param_space_state).unwrap();
                 new_params_state.insert(param_name.clone().to_string(), *new_value);
                 num_params_2_vary -= 1;
             } else {
@@ -186,7 +210,7 @@ impl ParamsConfigurator {
             // Put at the index extracted from the params_indexes the new state evaluated.
             // Note that it won't put the values of the state but its index into the space state vector.
             // This is for occupying less memory as possible.
-            let index_in_space_state = current_space_state.iter()
+            let index_in_space_state = param_space_state.iter()
                 .position(|&r| r == *new_params_state.get(param_name).unwrap());
             match index_in_space_state {
                 Some(i) => {
@@ -206,6 +230,7 @@ impl ParamsConfigurator {
         }
 
         state_4_history.clear();
+        
 
         // Insert the new state into the visited hashmap. For memory efficiency the visited states parameters
         // values are coded through their index into the space_state vector.
@@ -217,7 +242,7 @@ impl ParamsConfigurator {
         if there_wasnt == true {
             return Some(new_params_state);
         } else {
-            return self.get_rand_neighborhood(params_state, max_anneal_steps, current_anneal_step);
+            return None;//self.get_rand_neighborhood(params_state, max_anneal_steps, current_anneal_step);
         }
     }
 }

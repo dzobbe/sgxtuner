@@ -11,17 +11,17 @@ extern crate csv;
 
 #[macro_use]
 extern crate lazy_static;
-// extern crate influent;
+extern crate influent;
 
 use ansi_term::Colour::Yellow;
 
 
 mod PerfCounters;
 mod Parameters;
-mod SimulatedAnnealing;
+mod Annealing;
 mod EnergyEval;
 mod MeterProxy;
-// mod InfluxProxy;
+mod ResultsEmitter;
 
 #[derive(Debug, Clone,RustcDecodable)]
 pub enum CoolingSchedule {
@@ -54,12 +54,12 @@ use std::thread;
 
 //The Docopt usage string.
 const USAGE: &'static str = "
-Usage:   sgxmusl-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-e] --energy=<energy> [-c] --cooling=<cooling>
+Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-e] --energy=<energy> [-c] --cooling=<cooling> [-infl] [--host=<args>] [--port] [--user] [--pwd]
 Options:
     -t,    --targ=<args>     	Target Path.
     --args2targ=<args>          Arguments for Target (Specify Host and Port!).
     -b,    --bench=<args>     	Benchmark Path.
-    --args2bench=<args>         Arguments for Benchmark (start on localhost:12349!).
+    --args2bench=<args>         Arguments for Benchmark (start it on localhost:12349!).
     -ms,   --maxSteps=<args>    Max Steps of Annealing.
     -ni,   --numIter=<args>     Number of Iterations for each stage of exploration
     -tp,   --maxTemp=<args>     Max Temperature.
@@ -85,19 +85,16 @@ struct Args {
 
 
 /**
-The Sgx-Musl Auto Tuner is a tool able to needs in input:
+The Annealing Tuner is a tool able to needs in input:
 
 	- The target app
 	- The benchmark app
 	- An initial default parameter configuration
-	- The possible categorical levels that each parameter can assume
-	- The cutoff time k after which terminate the target algorithm execution
 	- The iteration number r for random selection of initial parameter configuration
-	- Probability p_restart with which re-initialize the search at random
 	- Fixed number s of random moves for perturbation
 **/
 /**
-Sgx-Musl Auto Tuner Entry Point
+Annealing Tuner Entry Point
 **/
 fn main() {
 
@@ -141,7 +138,7 @@ fn main() {
     /// Configure the Simulated Annealing problem with the ParamsConfigurator and EnergyEval instances.
     /// Finally,the solver is started
     ///
-    let mut problem = SimulatedAnnealing::Problem::ProblemInputs {
+    let mut problem = Annealing::Problem::ProblemInputs {
         params_configurator: params_config,
         energy_evaluator: energy_eval,
     };
@@ -165,7 +162,7 @@ fn main() {
     };
 
 
-    let annealing_solver = SimulatedAnnealing::Solver::Solver {
+    let annealing_solver = Annealing::Solver::Solver {
         termination_criteria: TerminationCriteria::Max_Steps(args.flag_maxSteps),
         min_temperature: args.flag_minTemp,
         max_temperature: args.flag_maxTemp,

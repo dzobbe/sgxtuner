@@ -1,0 +1,24 @@
+[package]
+name = "tuner"
+version = "0.1.0"
+authors = ["Giovanni Mazzeo mazzeo.gio@gmail.com"]
+
+[[bin]]
+name = "annealing-tuner"
+
+[dependencies]
+time = "*"
+docopt = "0.6"
+rustc-serialize = "0.3" 
+rand = "0.3"
+libc = "0.2.0"
+raw-cpuid = "2.0.1"
+x86 ={git='https://github.com/dzobbe/rust-x86.git'}
+perfcnt={git='https://github.com/dzobbe/rust-perfcnt.git'}
+ndarray = "0.6.8"
+lazy_static = "0.1.*"
+num = "0.1"
+ansi_term = "0.9"
+influent = "0.3.1"
+pbr="*"
+csv = "0.14"
