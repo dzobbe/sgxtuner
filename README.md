@@ -95,3 +95,7 @@ The following issues and TODOs need to be solved:
 * The provision of the metrics to `InfluxDB` and then to the `Chronograf`need to be developed
 * A parallel version of the algorithm is under construction
 * An acquisition of arguments through a .xml file
+
+## License
+
+MIT © [Giovanni Mazzeo](https://github.com/dzobbe)
