@@ -135,7 +135,7 @@ impl Solver {
         let mut start_time = time::precise_time_ns();
 
         let mut master_state = problem.initial_state();
-        let mut master_energy = match problem.energy(master_state.clone(), self.energy_type.clone()) {
+        let mut master_energy = match problem.energy(master_state.clone(), self.energy_type.clone(),0) {
             Some(nrg) => nrg,
             None => panic!("The initial configuration does not allow to calculate the energy"),
         };
@@ -191,9 +191,9 @@ impl Solver {
 				
 				let threads_res=Shared::ThreadsResults::new();
 				
-				let cpu_topology = Arc::new(Mutex::new(Topology::new()));
+				let cpu_topology = Arc::new(Mutex::new(Topology::new()));//get_cpu_cores(cpu_topology.clone())
 		    	// Spawn one thread for each and pass the topology down into scope.
-	 			let handles: Vec<_> = (0..get_cpu_cores(cpu_topology.clone())).map(|core| {
+	 			let handles: Vec<_> = (0..2).map(|core| {
 		            let child_topo = cpu_topology.clone();
 		            					
 					let (mut master_state_c, mut problem_c) = (master_state.clone(), problem.clone());
@@ -225,7 +225,7 @@ impl Solver {
 							            		None 	  => break,
 						            	};
 						                
-										let accepted_state = match problem_c.energy(next_state.clone(), nrg_type.clone()) {
+										let accepted_state = match problem_c.energy(next_state.clone(), nrg_type.clone(), core+1) {
 						                    Some(new_energy) => {
 						            			println!("Thread : {:?} - Step: {:?} - State: {:?} - Energy: {:?}",core, elapsed_steps_c.get(),next_state,new_energy);
 						 

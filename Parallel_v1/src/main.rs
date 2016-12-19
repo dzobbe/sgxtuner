@@ -135,7 +135,7 @@ fn main() {
         target_path: args.flag_targ,
         bench_path: args.flag_bench,
         target_args: args.flag_args2targ,
-        bench_args: args.flag_args2bench.split_whitespace().map(String::from).collect(),
+        bench_args: args.flag_args2bench,
         num_iter: args.flag_numIter,
     };
 

@@ -57,8 +57,8 @@ impl Problem {
 	Start Energy Evaluation: it starts the execution of the benchmark for the 
     specific parameter configuration and evaluate the performance result
 	**/
-    pub fn energy(&mut self, state: HashMap<String, u32>, energy_type: EnergyType) -> Option<f64> {
-        return self.energy_evaluator.execute_test_instance(state, energy_type);
+    pub fn energy(&mut self, state: HashMap<String, u32>, energy_type: EnergyType, id_thread: usize) -> Option<f64> {
+        return self.energy_evaluator.execute_test_instance(state, energy_type, id_thread);
     }
 
 

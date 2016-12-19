@@ -46,7 +46,7 @@ impl NeighborhoodsPool {
             return None;
         } else {
         	let len=neighs.len();       
-            return Some(neighs.remove(rand::thread_rng().gen_range(0, len)));
+            return Some(neighs.swap_remove(rand::thread_rng().gen_range(0, len)));
         }
     }
 
