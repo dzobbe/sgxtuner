@@ -1,5 +1,12 @@
 # annealing-tuner (Work In Progress)
-A tool for automatic tuning of client-server applications parameters. The application searches for the best configuration parameters using the Simulated Annealing algorithm (https://en.wikipedia.org/wiki/Simulated_annealing), a stochastic process for iterated local search.
+A tool for automatic tuning of client-server applications parameters. The application searches for the best configuration parameters using the Simulated Annealing algorithm (https://en.wikipedia.org/wiki/Simulated_annealing), a stochastic process for iterated local search. The application can start four different type of annealing solvers:
+
+   * Sequential  - This is the standard simulated annealing solver, which searches for the best solution in a sequential way.
+   * Parallel_v1 - This a parallelized version of the simulated annealing in which the CPU workers explore in parallel a specific set of neighborhoods composed by indipendent configurations and periodically exchange information.
+   * Parallel_v2 - This additional parallelized version of the solver starts from different initial parameter configurations and executes multiple indipendent workers, which don't need to exchange information except for the final comparison of worker results.
+   * Parallel_v2 - This last parallel version, instead, applies the "Parallel Simulated Annealing using Genetic Crossover" algorithm explained in the following paper https://pdfs.semanticscholar.org/3504/9bedbf4ee018a4b987beaa68394646e3fd47.pdf
+
+The application starts as many workers as the number of physical CPU cores.
 
 ## Requirements
 Of course, you will need Rust installed. If you haven't already, get it here: [rust-lang.org](https://www.rust-lang.org). Also you need [Cargo](https://crates.io) to easily compile. The rustc compiler version required is the 1.15.0-nightly.
@@ -33,19 +40,18 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
          * numIter  : The number of iterations to spend on each stage of exploration to get average measurements. 
          * maxTemp  : The starting temperature of the annealing process. Usually this value is set to a value that allows to choose the 98% of the moves. 
          * minTemp  : The final temperature of the annealing process.
-         * energy   : The type of energy to measure (Throughput or Latency)
-         * cooling  : The cooling function of the temperature (Exponential, Linear, Adaptive)
-   
-   ⚠️ **Note 1** - The Benchmark MUST be started on `localhost:12349` that is the address on which the `MeterProxy` listens
-   
-   ⚠️ **Note 2** - The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact, automatically searches in the Target arguments for the first occurrences of `-p/--port` and `-l/-h/--address/--host`. 
+         * energy   : The type of energy to measure (throughput or latency)
+         * cooling  : The cooling function of the temperature (exponential, linear, basic_exp_cooling)
+         * version  : The type of solver to use (sequential, parallel_v1, parallel_v2, parallel_v3)
+
+   ⚠️ **Note 1** - The address and port of the target application MUST be specified in its arguments. The Tuner application, in fact, automatically searches in the Target arguments for the first occurrences of `-p/--port` and `-l/-h/--address/--host`. 
    
    ```sh
    $ Usage:   annealing-tuner [-t] --targ=<targetPath> [--args2targ=<args>] [-b] \
    --bench=<benchmarkPath> [--args2bench=<args>] [-ms] --maxSteps=<maxSteps>   \
    [-ni] --numIter=<numIter>        [-tp] --maxTemp=<maxTemperature>           \
    [-mt] --minTemp=<minTemperature> [-e] --energy=<energy>                     \
-   [-c] --cooling=<cooling>
+   [-c] --cooling=<cooling> [-v] --version=<version>
    
   Options:
     -t,    --targ=<args>         #Target Path
@@ -58,6 +64,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
     -mt,   --minTemp=<args>      #Min Temperature 
     -e,	   --energy=<args>      #Energy to eval (latency or throughput)
     -c,    --cooling=<args>      #Cooling Schedule (linear, exponential, adaptive)
+    -v,	   --version=<args>     Type of solver to use (sequential, parallel_v1, parallel_v2, parallel_v3)
    ```
    
 5. Read the results in the `results.csv` file generated. This will include as many lines as the number of annealing steps conducted. Each line has the best configuration of parameters and also the best energy measured with that configuration until that step. Furthermore, the line of the CSV file includes also the results of the evaluation for that step with a specific configuration of parameters.
@@ -85,7 +92,8 @@ In this example we run the `annealing-tuner` on memcached using as a benchmark t
     --args2bench="-p 12349 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16" \
     --maxSteps=10000 --numIter=5 --maxTemp=1000 --minTemp=2  \
     --energy=throughput \
-    --cooling=exponential
+    --cooling=exponential \
+    --version=sequential
    ```
 Run the tuner. 
 
@@ -93,7 +101,6 @@ Run the tuner.
 The following issues and TODOs need to be solved:
 * The `adaptive` cooling schedule still need to be developed.
 * The provision of the metrics to `InfluxDB` and then to the `Chronograf`need to be developed
-* A parallel version of the algorithm is under construction
 * An acquisition of arguments through a .xml file
 
 ## License
