@@ -2,13 +2,13 @@ use rand;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use CoolingSchedule;
-use rand::{thread_rng,Rng};
+use rand::{thread_rng, Rng};
 use super::Cooler::{Cooler, StepsCooler, TimeCooler};
 
 #[derive(Debug, Clone)]
-pub struct MrResult{
-	pub energy: f64,
-	pub state: HashMap<String,u32>,
+pub struct MrResult {
+    pub energy: f64,
+    pub state: HashMap<String, u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -28,68 +28,66 @@ pub struct AcceptedStates(Arc<Mutex<usize>>);
 pub struct SubsequentRejStates(Arc<Mutex<usize>>);
 
 #[derive(Debug, Clone)]
-pub struct Temperature{
-	temp:   Arc<Mutex<f64>>,
-	cooler: StepsCooler, 
-	cooling_schedule: CoolingSchedule,
-	}
+pub struct Temperature {
+    temp: Arc<Mutex<f64>>,
+    cooler: StepsCooler,
+    cooling_schedule: CoolingSchedule,
+}
 
 #[derive(Debug, Clone)]
 pub struct ThreadsResults(Arc<Mutex<Vec<MrResult>>>);
 
-/************************************************************************************************************/
+/// *********************************************************************************************************
 
 impl InitialStatesPool {
     pub fn new() -> Self {
         InitialStatesPool(Arc::new(Mutex::new(Vec::new())))
     }
-    
-    pub fn push(&self, new_elem: HashMap<String, u32>){
+
+    pub fn push(&self, new_elem: HashMap<String, u32>) {
         let mut pool = self.0.lock().unwrap();
-		(*pool).push(new_elem);
+        (*pool).push(new_elem);
     }
-    
+
     pub fn remove_one(&self) -> Option<HashMap<String, u32>> {
         let mut pool = self.0.lock().unwrap();
 
         if pool.len() == 0 {
             return None;
         } else {
-        	let len=pool.len();       
+            let len = pool.len();
             return Some(pool.swap_remove(rand::thread_rng().gen_range(0, len)));
         }
     }
-    pub fn size(&self)-> u64 {
+    pub fn size(&self) -> u64 {
         let pool = self.0.lock().unwrap();
         pool.len() as u64
     }
-
 }
 
-/************************************************************************************************************/
+/// *********************************************************************************************************
 
 impl NeighborhoodsPool {
     pub fn new(neighs: Vec<HashMap<String, u32>>) -> Self {
         NeighborhoodsPool(Arc::new(Mutex::new(neighs)))
     }
-    
+
     pub fn remove_one(&self) -> Option<HashMap<String, u32>> {
         let mut neighs = self.0.lock().unwrap();
 
         if neighs.len() == 0 {
             return None;
         } else {
-        	let len=neighs.len();       
+            let len = neighs.len();
             return Some(neighs.swap_remove(rand::thread_rng().gen_range(0, len)));
         }
     }
-    pub fn size(&self)-> u64 {
+    pub fn size(&self) -> u64 {
         let neighs = self.0.lock().unwrap();
         neighs.len() as u64
     }
-
 }
-/************************************************************************************************************/
+/// *********************************************************************************************************
 
 impl ElapsedSteps {
     pub fn new() -> Self {
@@ -103,9 +101,8 @@ impl ElapsedSteps {
         let steps = self.0.lock().unwrap();
         *steps
     }
-
 }
-/************************************************************************************************************/
+/// *********************************************************************************************************
 
 impl AcceptedStates {
     pub fn new() -> Self {
@@ -119,9 +116,8 @@ impl AcceptedStates {
         let accepted = self.0.lock().unwrap();
         *accepted
     }
-
 }
-/************************************************************************************************************/
+/// *********************************************************************************************************
 
 impl SubsequentRejStates {
     pub fn new() -> Self {
@@ -130,63 +126,59 @@ impl SubsequentRejStates {
     pub fn increment(&self) {
         let mut rejected = self.0.lock().unwrap();
         *rejected = *rejected + 1;
-    } 
+    }
     pub fn get(&self) -> usize {
         let rejected = self.0.lock().unwrap();
         *rejected
     }
-    
+
     pub fn reset(&self) {
         let mut rejected = self.0.lock().unwrap();
         *rejected = 0;
     }
-
 }
-/************************************************************************************************************/
+/// *********************************************************************************************************
 
 impl Temperature {
     pub fn new(start_temp: f64, c: StepsCooler, cs: CoolingSchedule) -> Self {
-        Temperature{
-        	temp: Arc::new(Mutex::new(start_temp)),
-        	cooler: c,
-        	cooling_schedule: cs
-        	}
+        Temperature {
+            temp: Arc::new(Mutex::new(start_temp)),
+            cooler: c,
+            cooling_schedule: cs,
+        }
     }
-    
+
     pub fn update(&self, elapsed_steps: usize) {
         let mut temperature = self.temp.lock().unwrap();
-        
-        *temperature=match self.cooling_schedule {
-			                CoolingSchedule::linear => self.cooler.linear_cooling(elapsed_steps),
-			                CoolingSchedule::exponential => self.cooler.exponential_cooling(elapsed_steps),
-			                CoolingSchedule::basic_exp_cooling => self.cooler.basic_exp_cooling(*temperature),
-		            };        
+
+        *temperature = match self.cooling_schedule {
+            CoolingSchedule::linear => self.cooler.linear_cooling(elapsed_steps),
+            CoolingSchedule::exponential => self.cooler.exponential_cooling(elapsed_steps),
+            CoolingSchedule::basic_exp_cooling => self.cooler.basic_exp_cooling(*temperature),
+        };
     }
-    
+
     pub fn get(&self) -> f64 {
         let temperature = self.temp.lock().unwrap();
         *temperature
     }
+}
 
-} 
-
-/************************************************************************************************************/
+/// *********************************************************************************************************
 
 impl ThreadsResults {
     pub fn new() -> Self {
         ThreadsResults(Arc::new(Mutex::new(Vec::new())))
     }
-    
+
     pub fn push(&self, res: MrResult) {
         let mut res_coll = self.0.lock().unwrap();
-		(*res_coll).push(res);
+        (*res_coll).push(res);
     }
-    
-    pub fn get_coll(&self) -> Vec<MrResult>{
-        let mut res_coll = self.0.lock().unwrap();
-        let r=(*res_coll).clone();
-		r
-    }
-    
 
+    pub fn get_coll(&self) -> Vec<MrResult> {
+        let mut res_coll = self.0.lock().unwrap();
+        let r = (*res_coll).clone();
+        r
+    }
 }

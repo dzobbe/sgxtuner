@@ -28,7 +28,6 @@ use rustc_serialize::Encodable;
  * annealing, and provides methods to calculate the energy of a
  * state and generate new states.
  */
-
 #[derive(Debug, Clone)]
 pub struct Problem {
     pub params_configurator: Parameters::ParamsConfigurator,
@@ -37,15 +36,14 @@ pub struct Problem {
 
 
 impl Problem {
-	
     /**
 	Return space of Neighborhoods of a specific state given in input
 	**/
-	pub fn neigh_space(&mut self, state: &HashMap<String, u32>) -> Vec<HashMap<String, u32>> {
+    pub fn neigh_space(&mut self, state: &HashMap<String, u32>) -> Vec<HashMap<String, u32>> {
         return self.params_configurator.get_neigh_one_varying(state);
     }
-	
-	
+
+
     /**
 	Start Extraction of Initial State: it takes the Parameters Configuration 
     given in input
@@ -59,7 +57,11 @@ impl Problem {
 	Start Energy Evaluation: it starts the execution of the benchmark for the 
     specific parameter configuration and evaluate the performance result
 	**/
-    pub fn energy(&mut self, state: &HashMap<String, u32>, energy_type: EnergyType, id_thread: usize) -> Option<f64> {
+    pub fn energy(&mut self,
+                  state: &HashMap<String, u32>,
+                  energy_type: EnergyType,
+                  id_thread: usize)
+                  -> Option<f64> {
         return self.energy_evaluator.execute_test_instance(state, energy_type, id_thread);
     }
 
@@ -68,19 +70,17 @@ impl Problem {
 	Start Extraction of New Neighborhood State 
 	**/
     pub fn new_state(&mut self,
-                 state: &HashMap<String, u32>,
-                 max_steps: usize,
-                 current_step: usize)
-                 -> Option<HashMap<String, u32>> {
+                     state: &HashMap<String, u32>,
+                     max_steps: usize,
+                     current_step: usize)
+                     -> Option<HashMap<String, u32>> {
         return self.params_configurator.get_neighborhood(state, max_steps, current_step);
     }
-                 
-	/**
+
+    /**
 	Return a random state
 	**/
-    pub fn rand_state(&mut self,
-                 state: &HashMap<String, u32>)
-                 -> HashMap<String, u32> {
+    pub fn rand_state(&mut self, state: &HashMap<String, u32>) -> HashMap<String, u32> {
         return self.params_configurator.get_rand_neighborhood(state);
     }
 }

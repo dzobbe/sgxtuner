@@ -144,15 +144,17 @@ impl ParamsConfigurator {
     }
 
 
-	pub fn get_neigh_one_varying(&mut self ,current_state: &HashMap<String, u32> ) -> Vec<HashMap<String, u32>> {
-				
-		let mut neighborhoods: Vec<HashMap<String, u32>>=Vec::new();
-		
-		neighborhoods.clear();
-		
+    pub fn get_neigh_one_varying(&mut self,
+                                 current_state: &HashMap<String, u32>)
+                                 -> Vec<HashMap<String, u32>> {
+
+        let mut neighborhoods: Vec<HashMap<String, u32>> = Vec::new();
+
+        neighborhoods.clear();
+
         for (param_name, space_state_vec) in self.params_space_state.iter() {
-        	
-        	//let num_varying_params=(space_state_vec.len() as f64 *0.7) as usize;
+
+            // let num_varying_params=(space_state_vec.len() as f64 *0.7) as usize;
             for param_values in space_state_vec.iter() {
                 let mut temp = current_state.clone();
                 *(temp).get_mut(param_name).unwrap() = *param_values;
@@ -173,10 +175,10 @@ impl ParamsConfigurator {
 	Then, the more the number of steps executed increase, the more the Neighborhood space gets smaller.   
 	**/
     pub fn get_neighborhood(&mut self,
-                                 params_state: &HashMap<String, u32>,
-                                 max_anneal_steps: usize,
-                                 current_anneal_step: usize)
-                                 -> Option<HashMap<String, u32>> {
+                            params_state: &HashMap<String, u32>,
+                            max_anneal_steps: usize,
+                            current_anneal_step: usize)
+                            -> Option<HashMap<String, u32>> {
 
 
         // Evaluate the coefficient with which decrease the size of neighborhood selection (the number of parameters to vary). The factor will
@@ -192,7 +194,7 @@ impl ParamsConfigurator {
 
 
         let mut new_params_state: HashMap<String, u32> = HashMap::new();
-        //Temp vector for the history
+        // Temp vector for the history
         let mut state_4_history: Vec<u8> = vec!(0;params_state.len());
 
         // The HashMap iterator provides (key,value) pair in a random order
@@ -230,7 +232,7 @@ impl ParamsConfigurator {
         }
 
         state_4_history.clear();
-        
+
 
         // Insert the new state into the visited hashmap. For memory efficiency the visited states parameters
         // values are coded through their index into the space_state vector.
@@ -245,9 +247,9 @@ impl ParamsConfigurator {
             return Some(new_params_state);//self.get_rand_neighborhood(params_state, max_anneal_steps, current_anneal_step);
         }
     }
-                                 
-                                 
- 	/**
+
+
+    /**
 	Function that returns a random neighborhood of the state given in input.
 	**/
     pub fn get_rand_neighborhood(&mut self,
@@ -255,7 +257,7 @@ impl ParamsConfigurator {
                                  -> HashMap<String, u32> {
 
         let mut new_params_state: HashMap<String, u32> = HashMap::new();
-        //Temp vector for the history
+        // Temp vector for the history
         let mut state_4_history: Vec<u8> = vec!(0;params_state.len());
 
         // The HashMap iterator provides (key,value) pair in a random order

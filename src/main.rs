@@ -35,9 +35,9 @@ mod MeterProxy;
 mod ResultsEmitter;
 
 #[derive(Debug, Clone)]
-pub struct MrResult{
-	pub energy: f64,
-	pub state: HashMap<String,u32>,
+pub struct MrResult {
+    pub energy: f64,
+    pub state: HashMap<String, u32>,
 }
 
 
@@ -78,21 +78,34 @@ use PerfCounters::PerfMetrics;
 use std::thread;
 
 
-//The Docopt usage string.
-const USAGE: &'static str = "
-Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-e] --energy=<energy> [-c] --cooling=<cooling> --version=<version>
+// The Docopt usage string.
+const USAGE: &'static str =
+    "
+Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] \
+     --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] \
+     --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-e] \
+     --energy=<energy> [-c] --cooling=<cooling> --version=<version>
 Options:
-    -t,    --targ=<args>     	Target Path.
-    --args2targ=<args>          Arguments for Target (Specify Host and Port!).
+    -t,    \
+     --targ=<args>     	Target Path.
+    --args2targ=<args>          Arguments for Target \
+     (Specify Host and Port!).
     -b,    --bench=<args>     	Benchmark Path.
-    --args2bench=<args>         Arguments for Benchmark
-    -ms,   --maxSteps=<args>    Max Steps of Annealing.
-    -ni,   --numIter=<args>     Number of Iterations for each stage of exploration
+    \
+     --args2bench=<args>         Arguments for Benchmark
+    -ms,   --maxSteps=<args>    Max \
+     Steps of Annealing.
+    -ni,   --numIter=<args>     Number of Iterations for each stage of \
+     exploration
     -tp,   --maxTemp=<args>     Max Temperature.
-    -mt,   --minTemp=<args>     Min Temperature. 
+    -mt,   --minTemp=<args>     \
+     Min Temperature. 
     -e,	   --energy=<args>      Energy to eval (latency or throughput)
-    -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
-    -v,	   --version=<args>     Type of solver to use (sequential, parallel_v1, parallel_v2, parallel_v3)
+    \
+     -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
+    \
+     -v,	   --version=<args>     Type of solver to use (sequential, parallel_v1, parallel_v2, \
+     parallel_v3)
 ";
 
 
@@ -189,37 +202,35 @@ fn main() {
         CoolingSchedule::basic_exp_cooling => CoolingSchedule::basic_exp_cooling,
     };
 
-	
-	
-	let solver = Annealing::Solver::Solver {
-		max_steps:		 args.flag_maxSteps,
+
+
+    let solver = Annealing::Solver::Solver {
+        max_steps: args.flag_maxSteps,
         min_temperature: args.flag_minTemp,
         max_temperature: args.flag_maxTemp,
         energy_type: energy_type,
         cooling_schedule: cooling_schedule,
     };
-	
-	/// Start the solver
-	let mr_result: MrResult=match args.flag_version {
-        SolverVersion::sequential  => solver.solve_sequential(&mut problem),
+
+    /// Start the solver
+    let mr_result: MrResult = match args.flag_version {
+        SolverVersion::sequential => solver.solve_sequential(&mut problem),
         SolverVersion::parallel_v1 => solver.solve_parallel_v1(&mut problem),
         SolverVersion::parallel_v2 => solver.solve_parallel_v2(&mut problem),
         SolverVersion::parallel_v3 => {
-        	println!("TODO");
-        	return;
-        	}
+            println!("TODO");
+            return;
+        }
     };
-	
+
     println!("{}",Yellow.paint("\n---------------------------------------------------------------------------------------------------------------------------------------------------"));
     println!("{} {:?}",
              Yellow.paint("The Best Configuration found is: "),
              mr_result.state);
-    println!("{} {:?}",
-             Yellow.paint("Energy: "),
-             mr_result.energy);
+    println!("{} {:?}", Yellow.paint("Energy: "), mr_result.energy);
     println!("{}",Yellow.paint("---------------------------------------------------------------------------------------------------------------------------------------------------"));
 
 
 
-	
+
 }

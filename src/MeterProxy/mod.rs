@@ -14,125 +14,127 @@ use futures::stream::Stream;
 use futures_cpupool::CpuPool;
 use tokio_core::reactor::{Core, Handle, Timeout};
 use tokio_core::net::{TcpStream, TcpListener};
-use tokio_core::io::{Io,read_exact, write_all, Window};
+use tokio_core::io::{Io, read_exact, write_all, Window};
 use std::sync::{Arc, Mutex, RwLock};
 
 
 lazy_static! {
     static ref ERROR: Arc<Mutex<bool>>	= Arc::new(Mutex::new(false));
 }
- 
+
 #[derive(Clone, Debug)]
 pub struct Meter {
-	pub back_address : String,
-	pub back_port    : u16,
-	pub front_address: String,
-	pub front_port   : u16,	
-	pub num_bytes: Arc<Mutex<f64>>,
-    pub num_resp : Arc<Mutex<f64>>,
+    pub back_address: String,
+    pub back_port: u16,
+    pub front_address: String,
+    pub front_port: u16,
+    pub num_bytes: Arc<Mutex<f64>>,
+    pub num_resp: Arc<Mutex<f64>>,
 }
 
 
-impl Meter{
-		
+impl Meter {
     pub fn new(b_addr: String, b_port: u16, f_addr: String, f_port: u16) -> Meter {
         Meter {
-			back_address : b_addr,
-			back_port    : b_port,
-			front_address: f_addr,
-			front_port   : f_port,
-	    	num_bytes: Arc::new(Mutex::new(0.0)),
-    		num_resp : Arc::new(Mutex::new(0.0)),	
+            back_address: b_addr,
+            back_port: b_port,
+            front_address: f_addr,
+            front_port: f_port,
+            num_bytes: Arc::new(Mutex::new(0.0)),
+            num_resp: Arc::new(Mutex::new(0.0)),
         }
     }
-    
-    
-    //Start the Proxy 
-	pub fn start(&self) {
-
-			let rlim = libc::rlimit {
-	            rlim_cur: 4096,
-	            rlim_max: 4096,
-	        };
-	        unsafe {
-	            libc::setrlimit(libc::RLIMIT_NOFILE, &rlim);
-	        }
-	        
-		    let mut core = Core::new().unwrap();
-		    let mut lp = Core::new().unwrap();
-		    let pool = CpuPool::new(4);
-		    let buffer = Rc::new(RefCell::new(vec![0; 1024]));
-		    let handle = lp.handle();
-		    
-		    
-		    let f_addr_c=self.front_address.clone();
-		    let b_addr_c=self.back_address.clone();
-		    
-		    let front_address= (f_addr_c + ":" + &self.front_port.to_string()).parse::<SocketAddr>().unwrap();
-		    let back_address = (b_addr_c + ":" + &self.back_port.to_string()).parse::<SocketAddr>().unwrap();
-
-	    	let listener = TcpListener::bind(&front_address, &handle).unwrap();
-
-		    
-		   	// Construct a future representing our server. This future processes all
-		    // incoming connections and spawns a new task for each client which will do
-		    // the proxy work.
-		    let clients = listener.incoming().map(move |(socket, addr)| {
-		        (Client {
-		            buffer: buffer.clone(),
-		            pool: pool.clone(),
-		            handle: handle.clone(),
-		            num_bytes: self.num_bytes.clone(),
-		            num_resp : self.num_resp.clone()
-		        }.serve(socket,back_address), addr)
-		    });
-		    let handle = lp.handle();
-		    let server = clients.for_each(|(client, addr)| { 
-		        handle.spawn(client.then(move |res| {
-		            match res {
-		                Ok((a, b)) => {
-		                    println!("proxied {}/{} bytes for {}", a, b, addr)
-		                }
-		                Err(e) => {;},
-		            }
-		            futures::finished(())
-		        }));
-		        Ok(())
-		    }); 
 
 
-		    // Now that we've got our future ready to go, let's run it!
-		    //
-		    // This `run` method will return the resolution of the future itself, but
-		    // our `server` futures will resolve to `io::Result<()>`, so we just want to
-		    // assert that it didn't hit an error.
-		    lp.run(server).unwrap();
+    // Start the Proxy
+    pub fn start(&self) {
+
+        let rlim = libc::rlimit {
+            rlim_cur: 4096,
+            rlim_max: 4096,
+        };
+        unsafe {
+            libc::setrlimit(libc::RLIMIT_NOFILE, &rlim);
+        }
+
+        let mut core = Core::new().unwrap();
+        let mut lp = Core::new().unwrap();
+        let pool = CpuPool::new(4);
+        let buffer = Rc::new(RefCell::new(vec![0; 1024]));
+        let handle = lp.handle();
+
+
+        let f_addr_c = self.front_address.clone();
+        let b_addr_c = self.back_address.clone();
+
+        let front_address =
+            (f_addr_c + ":" + &self.front_port.to_string()).parse::<SocketAddr>().unwrap();
+        let back_address =
+            (b_addr_c + ":" + &self.back_port.to_string()).parse::<SocketAddr>().unwrap();
+
+        let listener = TcpListener::bind(&front_address, &handle).unwrap();
+
+
+        // Construct a future representing our server. This future processes all
+        // incoming connections and spawns a new task for each client which will do
+        // the proxy work.
+        let clients = listener.incoming().map(move |(socket, addr)| {
+            (Client {
+                     buffer: buffer.clone(),
+                     pool: pool.clone(),
+                     handle: handle.clone(),
+                     num_bytes: self.num_bytes.clone(),
+                     num_resp: self.num_resp.clone(),
+                 }
+                 .serve(socket, back_address),
+             addr)
+        });
+        let handle = lp.handle();
+        let server = clients.for_each(|(client, addr)| {
+            handle.spawn(client.then(move |res| {
+                match res {
+                    Ok((a, b)) => println!("proxied {}/{} bytes for {}", a, b, addr),
+                    Err(e) => {;
+                    }
+                }
+                futures::finished(())
+            }));
+            Ok(())
+        });
+
+
+        // Now that we've got our future ready to go, let's run it!
+        //
+        // This `run` method will return the resolution of the future itself, but
+        // our `server` futures will resolve to `io::Result<()>`, so we just want to
+        // assert that it didn't hit an error.
+        lp.run(server).unwrap();
     }
-	
-	 
+
+
     /**
 	Reset the proxy server counter
 	**/
     pub fn reset(&self) {
-    	{
-    		let mut n_bytes=self.num_bytes.lock().unwrap();
-        	*n_bytes=0.0;
+        {
+            let mut n_bytes = self.num_bytes.lock().unwrap();
+            *n_bytes = 0.0;
         }
-    	{ 
-        	let mut n_resp=self.num_resp.lock().unwrap();
-        	*n_resp=0.0;
+        {
+            let mut n_resp = self.num_resp.lock().unwrap();
+            *n_resp = 0.0;
         }
 
     }
 
 
     pub fn get_num_kbytes_rcvd(&self) -> f64 {
-    	let n_bytes=self.num_bytes.lock().unwrap();
+        let n_bytes = self.num_bytes.lock().unwrap();
         return *n_bytes as f64 / 1024.0f64;
     }
 
     pub fn get_num_resp(&self) -> f64 {
-        let n_resp=self.num_resp.lock().unwrap();
+        let n_resp = self.num_resp.lock().unwrap();
         return *n_resp as f64 / 1000000.0f64;
     }
 }
@@ -141,20 +143,20 @@ impl Meter{
 // lifetime.
 struct Client {
     buffer: Rc<RefCell<Vec<u8>>>,
-    pool  : CpuPool,
+    pool: CpuPool,
     handle: Handle,
-	num_bytes: Arc<Mutex<f64>>,
-    num_resp : Arc<Mutex<f64>>,
+    num_bytes: Arc<Mutex<f64>>,
+    num_resp: Arc<Mutex<f64>>,
 }
 
 impl Client {
+    fn serve(self,
+             front_socket: TcpStream,
+             back_addr: SocketAddr)
+             -> Box<Future<Item = (u64, u64), Error = io::Error>> {
 
-
-    fn serve(self, front_socket: TcpStream, back_addr: SocketAddr)
-                -> Box<Future<Item=(u64, u64), Error=io::Error>> {
-       
         let pool = self.pool.clone();
-        
+
 
         // Now that we've got a socket address to connect to, let's actually
         // create a connection to that socket!
@@ -170,29 +172,31 @@ impl Client {
         // possible error in the connection phase to handle it in a moment.
         let handle = self.handle.clone();
 
-        let pair=TcpStream::connect(&back_addr, &handle).and_then(|back_socket|
-        	 futures::lazy(|| Ok((back_socket,front_socket)))
-        	);
+        let pair = TcpStream::connect(&back_addr, &handle)
+            .and_then(|back_socket| futures::lazy(|| Ok((back_socket, front_socket))));
 
 
         let buffer = self.buffer.clone();
-   		let n_bytes = self.num_bytes.clone();
+        let n_bytes = self.num_bytes.clone();
         let n_resp = self.num_resp.clone();
 
         mybox(pair.and_then(|(back, front)| {
             let back = Rc::new(back);
             let front = Rc::new(front);
 
-            let half1 = TransferFrontBack::new(back.clone(), front.clone(), buffer.clone(),n_bytes.clone(),n_resp.clone());
+            let half1 = TransferFrontBack::new(back.clone(),
+                                               front.clone(),
+                                               buffer.clone(),
+                                               n_bytes.clone(),
+                                               n_resp.clone());
             let half2 = TransferBackFront::new(front, back, buffer, n_bytes, n_resp);
             half1.join(half2)
         }))
     }
-                
 }
 
 
-fn mybox<F: Future + 'static>(f: F) -> Box<Future<Item=F::Item, Error=F::Error>> {
+fn mybox<F: Future + 'static>(f: F) -> Box<Future<Item = F::Item, Error = F::Error>> {
     Box::new(f)
 }
 
@@ -216,24 +220,25 @@ struct TransferBackFront {
 
     // The number of bytes we've written so far.
     amt: u64,
-	num_bytes: Arc<Mutex<f64>>,
-    num_resp : Arc<Mutex<f64>>,
+    num_bytes: Arc<Mutex<f64>>,
+    num_resp: Arc<Mutex<f64>>,
 }
 
 impl TransferBackFront {
     fn new(reader: Rc<TcpStream>,
            writer: Rc<TcpStream>,
            buffer: Rc<RefCell<Vec<u8>>>,
-   	       n_bytes: Arc<Mutex<f64>>,
-    	   n_resp : Arc<Mutex<f64>> ) -> TransferBackFront {
-        
+           n_bytes: Arc<Mutex<f64>>,
+           n_resp: Arc<Mutex<f64>>)
+           -> TransferBackFront {
+
         TransferBackFront {
             reader: reader,
             writer: writer,
             buf: buffer,
             amt: 0,
             num_bytes: n_bytes,
-            num_resp: n_resp
+            num_resp: n_resp,
         }
     }
 }
@@ -249,8 +254,8 @@ impl Future for TransferBackFront {
 
 
     fn poll(&mut self) -> Poll<u64, io::Error> {
-        //let mut buffer = self.buf.borrow_mut();
-		let mut buffer = vec![0; 1024];
+        // let mut buffer = self.buf.borrow_mut();
+        let mut buffer = vec![0; 1024];
 
 
         // Here we loop over the two TCP halves, reading all data from one
@@ -263,19 +268,19 @@ impl Future for TransferBackFront {
 
             let write_ready = self.writer.poll_write().is_ready();
             if !read_ready || !write_ready {
-                return Ok(Async::NotReady)
+                return Ok(Async::NotReady);
             }
 
 
             let n = try_nb!((&*self.reader).read(&mut buffer));
             if n == 0 {
                 try!(self.writer.shutdown(Shutdown::Write));
-                return Ok(self.amt.into())
+                return Ok(self.amt.into());
             }
-            
-            self.amt += n as u64; 
-   			           
-			
+
+            self.amt += n as u64;
+
+
             // Unlike above, we don't handle `WouldBlock` specially, because
             // that would play into the logic mentioned above (tracking read
             // rates and write rates), so we just ferry along that error for
@@ -296,24 +301,25 @@ struct TransferFrontBack {
 
     // The number of bytes we've written so far.
     amt: u64,
-    
-	num_bytes: Arc<Mutex<f64>>,
-    num_resp : Arc<Mutex<f64>>,
+
+    num_bytes: Arc<Mutex<f64>>,
+    num_resp: Arc<Mutex<f64>>,
 }
 
 impl TransferFrontBack {
     fn new(reader: Rc<TcpStream>,
            writer: Rc<TcpStream>,
            buffer: Rc<RefCell<Vec<u8>>>,
-  	       n_bytes: Arc<Mutex<f64>>,
-    	   n_resp : Arc<Mutex<f64>>) -> TransferFrontBack {
+           n_bytes: Arc<Mutex<f64>>,
+           n_resp: Arc<Mutex<f64>>)
+           -> TransferFrontBack {
         TransferFrontBack {
             reader: reader,
             writer: writer,
             buf: buffer,
             amt: 0,
             num_bytes: n_bytes,
-            num_resp: n_resp
+            num_resp: n_resp,
         }
     }
 }
@@ -327,8 +333,8 @@ impl Future for TransferFrontBack {
 
 
     fn poll(&mut self) -> Poll<u64, io::Error> {
-		let mut  buffer = vec![0; 1024];
-        //let mut buffer = self.buf.borrow_mut();
+        let mut buffer = vec![0; 1024];
+        // let mut buffer = self.buf.borrow_mut();
 
         // Here we loop over the two TCP halves, reading all data from one
         // connection and writing it to another. The crucial performance aspect
@@ -340,28 +346,28 @@ impl Future for TransferFrontBack {
 
             let write_ready = self.writer.poll_write().is_ready();
             if !read_ready || !write_ready {
-                return Ok(Async::NotReady)
+                return Ok(Async::NotReady);
             }
 
 
             let n = try_nb!((&*self.reader).read(&mut buffer));
             if n == 0 {
                 try!(self.writer.shutdown(Shutdown::Write));
-                return Ok(self.amt.into())
+                return Ok(self.amt.into());
             }
-            
-            self.amt += n as u64; 
-            
-   			
-   			{
-       			let mut n_bytes=self.num_bytes.lock().unwrap();
-	        	*n_bytes+=n as f64;
-	        }
-   			
-   			{
-		        let mut n_resp=self.num_resp.lock().unwrap();
-		        *n_resp+=1.0;
-	        }
+
+            self.amt += n as u64;
+
+
+            {
+                let mut n_bytes = self.num_bytes.lock().unwrap();
+                *n_bytes += n as f64;
+            }
+
+            {
+                let mut n_resp = self.num_resp.lock().unwrap();
+                *n_resp += 1.0;
+            }
 
             // Unlike above, we don't handle `WouldBlock` specially, because
             // that would play into the logic mentioned above (tracking read
@@ -376,6 +382,3 @@ impl Future for TransferFrontBack {
 fn other(desc: &str) -> io::Error {
     io::Error::new(io::ErrorKind::Other, desc)
 }
-
-
-

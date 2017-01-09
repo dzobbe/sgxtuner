@@ -17,9 +17,9 @@ pub struct Emitter2File {
 }
 
 pub struct Emitter2Influx {
-    host:	  String,
-	port:	  u32,
-	client:	  Client,
+    host: String,
+    port: u32,
+    client: Client,
 }
 
 
@@ -37,49 +37,49 @@ pub trait Emitter {
 
 
 
-/*impl Emitter for Emitter2Influx {
-    fn new(h: String, p: u16, user: String, pwd: String, db: String) -> Emitter2Influx {
-        
-        // prepare client
-		let credentials = Credentials {
-		    username: user,
-		    password: pwd,
-		    database: db
-		};
-		
-		let addr="http://".to_string() + h + p;
-		let hosts = vec![addr];
-		
-		let c = create_client(credentials, hosts);
-		
-		Emitter2Influx {
-			client:   c,
-    	    host:	  h,
-			port:	  p,
-        	}
-        
-    }
-
-    fn send_update(&mut self,
-                   measured_val: f64,
-                   measured_state: &HashMap<String, u32>,
-                   best_val: f64,
-                   best_state: &HashMap<String, u32>,
-                   num_iter: u64) {
-                   	           	
-	   	// prepare measurement
-		let mut measurement = Measurement::new("measured_nrg");
-		//measurement.add_field("some_field", Value::String("hello"));
-		//measurement.add_tag("some_region", "Moscow");
-		
-		self.client.write_one(measurement, Some(measured_val));
-		
-		// prepare measurement
-		let mut measurement = Measurement::new("best_nrg");
-		self.client.write_one(measurement, Some(best_val));
-
-    }
-}*/
+// impl Emitter for Emitter2Influx {
+// fn new(h: String, p: u16, user: String, pwd: String, db: String) -> Emitter2Influx {
+//
+// prepare client
+// let credentials = Credentials {
+// username: user,
+// password: pwd,
+// database: db
+// };
+//
+// let addr="http://".to_string() + h + p;
+// let hosts = vec![addr];
+//
+// let c = create_client(credentials, hosts);
+//
+// Emitter2Influx {
+// client:   c,
+// host:	  h,
+// port:	  p,
+// }
+//
+// }
+//
+// fn send_update(&mut self,
+// measured_val: f64,
+// measured_state: &HashMap<String, u32>,
+// best_val: f64,
+// best_state: &HashMap<String, u32>,
+// num_iter: u64) {
+//
+// prepare measurement
+// let mut measurement = Measurement::new("measured_nrg");
+// measurement.add_field("some_field", Value::String("hello"));
+// measurement.add_tag("some_region", "Moscow");
+//
+// self.client.write_one(measurement, Some(measured_val));
+//
+// prepare measurement
+// let mut measurement = Measurement::new("best_nrg");
+// self.client.write_one(measurement, Some(best_val));
+//
+// }
+// }
 
 
 
