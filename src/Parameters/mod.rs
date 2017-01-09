@@ -168,14 +168,14 @@ impl ParamsConfigurator {
 
 
     /**
-	Function that returns a random neighborhood of the state given in input. The Neighborhood evaluation is performed in 
+	Function that returns a neighborhood of the state given in input. The Neighborhood evaluation is performed in 
 	an adaptive way. At the beginning of the Annealing the space of Neighborhoods will be large (60% of the parameters will vary).
 	Then, the more the number of steps executed increase, the more the Neighborhood space gets smaller.   
 	**/
-    pub fn get_rand_neighborhood(&mut self,
+    pub fn get_neighborhood(&mut self,
                                  params_state: &HashMap<String, u32>,
-                                 max_anneal_steps: u64,
-                                 current_anneal_step: u64)
+                                 max_anneal_steps: usize,
+                                 current_anneal_step: usize)
                                  -> Option<HashMap<String, u32>> {
 
 
@@ -242,8 +242,30 @@ impl ParamsConfigurator {
         if there_wasnt == true {
             return Some(new_params_state);
         } else {
-            return None;//self.get_rand_neighborhood(params_state, max_anneal_steps, current_anneal_step);
+            return Some(new_params_state);//self.get_rand_neighborhood(params_state, max_anneal_steps, current_anneal_step);
         }
+    }
+                                 
+                                 
+ 	/**
+	Function that returns a random neighborhood of the state given in input.
+	**/
+    pub fn get_rand_neighborhood(&mut self,
+                                 params_state: &HashMap<String, u32>)
+                                 -> HashMap<String, u32> {
+
+        let mut new_params_state: HashMap<String, u32> = HashMap::new();
+        //Temp vector for the history
+        let mut state_4_history: Vec<u8> = vec!(0;params_state.len());
+
+        // The HashMap iterator provides (key,value) pair in a random order
+        for (param_name, param_current_value) in params_state.iter() {
+            let param_space_state = self.params_space_state.get(param_name).unwrap();
+            let new_value = rand::thread_rng().choose(&param_space_state).unwrap();
+            new_params_state.insert(param_name.clone().to_string(), *new_value);
+        }
+
+        return new_params_state;
     }
 }
 

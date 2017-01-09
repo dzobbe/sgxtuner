@@ -77,6 +77,6 @@ impl Cooler for StepsCooler {
     }
 
     fn basic_exp_cooling(&self, current_temp: f64) -> f64 {
-        return current_temp*0.99;
+        return current_temp*0.999;
     }
 }

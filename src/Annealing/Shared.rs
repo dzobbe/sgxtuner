@@ -12,6 +12,10 @@ pub struct MrResult{
 }
 
 #[derive(Debug, Clone)]
+pub struct InitialStatesPool(Arc<Mutex<Vec<HashMap<String, u32>>>>);
+
+
+#[derive(Debug, Clone)]
 pub struct NeighborhoodsPool(Arc<Mutex<Vec<HashMap<String, u32>>>>);
 
 #[derive(Debug, Clone)]
@@ -33,6 +37,36 @@ pub struct Temperature{
 #[derive(Debug, Clone)]
 pub struct ThreadsResults(Arc<Mutex<Vec<MrResult>>>);
 
+/************************************************************************************************************/
+
+impl InitialStatesPool {
+    pub fn new() -> Self {
+        InitialStatesPool(Arc::new(Mutex::new(Vec::new())))
+    }
+    
+    pub fn push(&self, new_elem: HashMap<String, u32>){
+        let mut pool = self.0.lock().unwrap();
+		(*pool).push(new_elem);
+    }
+    
+    pub fn remove_one(&self) -> Option<HashMap<String, u32>> {
+        let mut pool = self.0.lock().unwrap();
+
+        if pool.len() == 0 {
+            return None;
+        } else {
+        	let len=pool.len();       
+            return Some(pool.swap_remove(rand::thread_rng().gen_range(0, len)));
+        }
+    }
+    pub fn size(&self)-> u64 {
+        let pool = self.0.lock().unwrap();
+        pool.len() as u64
+    }
+
+}
+
+/************************************************************************************************************/
 
 impl NeighborhoodsPool {
     pub fn new(neighs: Vec<HashMap<String, u32>>) -> Self {
@@ -49,8 +83,13 @@ impl NeighborhoodsPool {
             return Some(neighs.swap_remove(rand::thread_rng().gen_range(0, len)));
         }
     }
+    pub fn size(&self)-> u64 {
+        let neighs = self.0.lock().unwrap();
+        neighs.len() as u64
+    }
 
 }
+/************************************************************************************************************/
 
 impl ElapsedSteps {
     pub fn new() -> Self {
@@ -66,6 +105,7 @@ impl ElapsedSteps {
     }
 
 }
+/************************************************************************************************************/
 
 impl AcceptedStates {
     pub fn new() -> Self {
@@ -81,6 +121,7 @@ impl AcceptedStates {
     }
 
 }
+/************************************************************************************************************/
 
 impl SubsequentRejStates {
     pub fn new() -> Self {
@@ -89,7 +130,7 @@ impl SubsequentRejStates {
     pub fn increment(&self) {
         let mut rejected = self.0.lock().unwrap();
         *rejected = *rejected + 1;
-    }
+    } 
     pub fn get(&self) -> usize {
         let rejected = self.0.lock().unwrap();
         *rejected
@@ -101,6 +142,7 @@ impl SubsequentRejStates {
     }
 
 }
+/************************************************************************************************************/
 
 impl Temperature {
     pub fn new(start_temp: f64, c: StepsCooler, cs: CoolingSchedule) -> Self {
@@ -117,7 +159,7 @@ impl Temperature {
         *temperature=match self.cooling_schedule {
 			                CoolingSchedule::linear => self.cooler.linear_cooling(elapsed_steps),
 			                CoolingSchedule::exponential => self.cooler.exponential_cooling(elapsed_steps),
-			                CoolingSchedule::adaptive => self.cooler.basic_exp_cooling(*temperature),
+			                CoolingSchedule::basic_exp_cooling => self.cooler.basic_exp_cooling(*temperature),
 		            };        
     }
     
@@ -127,6 +169,8 @@ impl Temperature {
     }
 
 } 
+
+/************************************************************************************************************/
 
 impl ThreadsResults {
     pub fn new() -> Self {

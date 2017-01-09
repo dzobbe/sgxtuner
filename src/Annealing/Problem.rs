@@ -1,7 +1,7 @@
 /// ///////////////////////////////////////////////////////////////////////////
 ///  File: neil/problem.rs
 /// ///////////////////////////////////////////////////////////////////////////
-///  Copyright 2016 Samuel Sleight
+///  Copyright 2016 Giovanni Mazzeo
 ///
 ///  Licensed under the Apache License, Version 2.0 (the "License");
 ///  you may not use this file except in compliance with the License.
@@ -22,50 +22,35 @@ use EnergyEval;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use rustc_serialize::Encodable;
+
 /**
  * A problem represents something to be solved using simulated
  * annealing, and provides methods to calculate the energy of a
  * state and generate new states.
  */
-pub trait Problem {
-    /**
-     * This function should generate an initial state for the problem.
-     */
-    fn initial_state(&mut self) -> HashMap<String, u32>;
 
-    /**
-     * This function should calculate the energy of a given state,
-     * as a number between 0.0 and 1.0.
-     *
-     * Lower energy means the state is more optimal - simulated
-     * annealing will try to find a state with the lowest energy.
-     */
-    fn energy(&mut self, state: &HashMap<String, u32>, energy_type: EnergyType) -> Option<f64>;
-
-    /**
-     * This function should provide a new state, given the previous
-     * state.
-     */
-    fn new_state(&mut self,
-                 state: &HashMap<String, u32>,
-                 max_steps: u64,
-                 current_step: u64)
-                 -> Option<HashMap<String, u32>>;
-}
-
-#[derive(Debug, RustcEncodable)]
-pub struct ProblemInputs {
+#[derive(Debug, Clone)]
+pub struct Problem {
     pub params_configurator: Parameters::ParamsConfigurator,
     pub energy_evaluator: EnergyEval::EnergyEval,
 }
 
 
-impl Problem for ProblemInputs {
+impl Problem {
+	
+    /**
+	Return space of Neighborhoods of a specific state given in input
+	**/
+	pub fn neigh_space(&mut self, state: &HashMap<String, u32>) -> Vec<HashMap<String, u32>> {
+        return self.params_configurator.get_neigh_one_varying(state);
+    }
+	
+	
     /**
 	Start Extraction of Initial State: it takes the Parameters Configuration 
     given in input
 	**/
-    fn initial_state(&mut self) -> HashMap<String, u32> {
+    pub fn initial_state(&mut self) -> HashMap<String, u32> {
         return self.params_configurator.get_initial_param_conf();
     }
 
@@ -74,19 +59,28 @@ impl Problem for ProblemInputs {
 	Start Energy Evaluation: it starts the execution of the benchmark for the 
     specific parameter configuration and evaluate the performance result
 	**/
-    fn energy(&mut self, state: &HashMap<String, u32>, energy_type: EnergyType) -> Option<f64> {
-        return self.energy_evaluator.execute_test_instance(state, energy_type);
+    pub fn energy(&mut self, state: &HashMap<String, u32>, energy_type: EnergyType, id_thread: usize) -> Option<f64> {
+        return self.energy_evaluator.execute_test_instance(state, energy_type, id_thread);
     }
 
 
     /**
-	Start Extraction of New State from Neighborhood Set
+	Start Extraction of New Neighborhood State 
 	**/
-    fn new_state(&mut self,
+    pub fn new_state(&mut self,
                  state: &HashMap<String, u32>,
-                 max_steps: u64,
-                 current_step: u64)
+                 max_steps: usize,
+                 current_step: usize)
                  -> Option<HashMap<String, u32>> {
-        return self.params_configurator.get_rand_neighborhood(state, max_steps, current_step);
+        return self.params_configurator.get_neighborhood(state, max_steps, current_step);
+    }
+                 
+	/**
+	Return a random state
+	**/
+    pub fn rand_state(&mut self,
+                 state: &HashMap<String, u32>)
+                 -> HashMap<String, u32> {
+        return self.params_configurator.get_rand_neighborhood(state);
     }
 }
