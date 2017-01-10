@@ -212,40 +212,39 @@ impl ParamsConfigurator {
             // Put at the index extracted from the params_indexes the new state evaluated.
             // Note that it won't put the values of the state but its index into the space state vector.
             // This is for occupying less memory as possible.
-            let index_in_space_state = param_space_state.iter()
+          /*  let index_in_space_state = param_space_state.iter()
                 .position(|&r| r == *new_params_state.get(param_name).unwrap());
+                
             match index_in_space_state {
                 Some(i) => {
                     state_4_history[*self.params_indexes.get(param_name).unwrap() as usize] =
                         i as u8
                 }
                 None => panic!("I did not find the parameter into the space state!"),
-            }
+            }*/
 
         }
 
 
         // Extract the string sequence of the new state
-        let mut byte_state_str = String::new();
+     /*   let mut byte_state_str = String::new();
         for x in 0..state_4_history.len() {
             byte_state_str.push_str(&*state_4_history.get(x).unwrap().to_string());
         }
 
-        state_4_history.clear();
+        state_4_history.clear();*/
 
 
         // Insert the new state into the visited hashmap. For memory efficiency the visited states parameters
         // values are coded through their index into the space_state vector.
-        let there_wasnt = self.visited_params_states.insert(byte_state_str.clone());
+       // let there_wasnt = self.visited_params_states.insert(byte_state_str.clone());
 
         // If the neighborhood selected has been already visited recursively re-call the function
         // In case all states have been visited returns None to the Annealing Solver which will interrupt
         // the evaluation. Otherwise, the new state is added to the visited ones and the function return it.
-        if there_wasnt == true {
-            return Some(new_params_state);
-        } else {
-            return Some(new_params_state);//self.get_rand_neighborhood(params_state, max_anneal_steps, current_anneal_step);
-        }
+
+        
+         return Some(new_params_state)
     }
 
 

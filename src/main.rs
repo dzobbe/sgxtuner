@@ -77,36 +77,25 @@ use std::process::Command;
 use PerfCounters::PerfMetrics;
 use std::thread;
 
+//The Docopt usage string.
+const USAGE: &'static str = "
+Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] [--maxTemp=<maxTemperature>] [-mt] [--minTemp=<minTemperature>] [-e] --energy=<energy> [-c] --cooling=<cooling> --version=<version>
 
-// The Docopt usage string.
-const USAGE: &'static str =
-    "
-Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] \
-     --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] \
-     --numIter=<numIter> [-tp] --maxTemp=<maxTemperature> [-mt] --minTemp=<minTemperature> [-e] \
-     --energy=<energy> [-c] --cooling=<cooling> --version=<version>
 Options:
-    -t,    \
-     --targ=<args>     	Target Path.
-    --args2targ=<args>          Arguments for Target \
-     (Specify Host and Port!).
+    -t,    --targ=<args>     	Target Path.
+    --args2targ=<args>          Arguments for Target (Specify Host and Port!).
     -b,    --bench=<args>     	Benchmark Path.
-    \
-     --args2bench=<args>         Arguments for Benchmark
-    -ms,   --maxSteps=<args>    Max \
-     Steps of Annealing.
-    -ni,   --numIter=<args>     Number of Iterations for each stage of \
-     exploration
-    -tp,   --maxTemp=<args>     Max Temperature.
-    -mt,   --minTemp=<args>     \
-     Min Temperature. 
+    --args2bench=<args>         Arguments for Benchmark
+    -ms,   --maxSteps=<args>    Max Steps of Annealing.
+    -ni,   --numIter=<args>     Number of Iterations for each stage of exploration
+    -tp,   --maxTemp=<args>     (Optional) Max Temperature.
+    -mt,   --minTemp=<args>     (Optional) Min Temperature.
     -e,	   --energy=<args>      Energy to eval (latency or throughput)
-    \
-     -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
-    \
-     -v,	   --version=<args>     Type of solver to use (sequential, parallel_v1, parallel_v2, \
-     parallel_v3)
+    -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
+    -v,	   --version=<args>     Type of solver to use (sequential, parallel_v1, parallel_v2, parallel_v3)
 ";
+
+
 
 
 #[derive(Debug, RustcDecodable)]
@@ -115,8 +104,8 @@ struct Args {
     flag_bench: String,
     flag_maxSteps: usize,
     flag_numIter: u8,
-    flag_maxTemp: f64,
-    flag_minTemp: f64,
+    flag_maxTemp: Option<f64>,
+    flag_minTemp: Option<f64>,
     flag_energy: EnergyType,
     flag_cooling: CoolingSchedule,
     flag_version: SolverVersion,
@@ -203,34 +192,30 @@ fn main() {
     };
 
 
-
-    let solver = Annealing::Solver::Solver {
+	
+    let mut solver = Annealing::Solver::Solver {
         max_steps: args.flag_maxSteps,
-        min_temperature: args.flag_minTemp,
-        max_temperature: args.flag_maxTemp,
         energy_type: energy_type,
         cooling_schedule: cooling_schedule,
     };
 
+
     /// Start the solver
     let mr_result: MrResult = match args.flag_version {
-        SolverVersion::sequential => solver.solve_sequential(&mut problem),
-        SolverVersion::parallel_v1 => solver.solve_parallel_v1(&mut problem),
-        SolverVersion::parallel_v2 => solver.solve_parallel_v2(&mut problem),
-        SolverVersion::parallel_v3 => {
-            println!("TODO");
-            return;
-        }
+        SolverVersion::sequential => solver.solve_sequential(args.flag_minTemp,args.flag_maxTemp,&mut problem),
+        SolverVersion::parallel_v1 => solver.solve_parallel_v1(args.flag_minTemp,args.flag_maxTemp,&mut problem),
+        SolverVersion::parallel_v2 => solver.solve_parallel_v2(args.flag_minTemp,args.flag_maxTemp,&mut problem),
+        SolverVersion::parallel_v3 => solver.solve_parallel_v3(args.flag_minTemp,args.flag_maxTemp,&mut problem),
     };
 
-    println!("{}",Yellow.paint("\n---------------------------------------------------------------------------------------------------------------------------------------------------"));
+    println!("{}",Yellow.paint("\n-----------------------------------------------------------------------------------------------------------------------------------------------"));
     println!("{} {:?}",
              Yellow.paint("The Best Configuration found is: "),
              mr_result.state);
     println!("{} {:?}", Yellow.paint("Energy: "), mr_result.energy);
-    println!("{}",Yellow.paint("---------------------------------------------------------------------------------------------------------------------------------------------------"));
-
-
+    println!("{}",Yellow.paint("-----------------------------------------------------------------------------------------------------------------------------------------------"));
 
 
 }
+
+

@@ -254,8 +254,7 @@ impl Future for TransferBackFront {
 
 
     fn poll(&mut self) -> Poll<u64, io::Error> {
-        // let mut buffer = self.buf.borrow_mut();
-        let mut buffer = vec![0; 1024];
+        let mut buffer = self.buf.borrow_mut();
 
 
         // Here we loop over the two TCP halves, reading all data from one
@@ -333,8 +332,7 @@ impl Future for TransferFrontBack {
 
 
     fn poll(&mut self) -> Poll<u64, io::Error> {
-        let mut buffer = vec![0; 1024];
-        // let mut buffer = self.buf.borrow_mut();
+        let mut buffer = self.buf.borrow_mut();
 
         // Here we loop over the two TCP halves, reading all data from one
         // connection and writing it to another. The crucial performance aspect

@@ -14,7 +14,6 @@ pub struct MrResult {
 #[derive(Debug, Clone)]
 pub struct InitialStatesPool(Arc<Mutex<Vec<HashMap<String, u32>>>>);
 
-
 #[derive(Debug, Clone)]
 pub struct NeighborhoodsPool(Arc<Mutex<Vec<HashMap<String, u32>>>>);
 
@@ -51,7 +50,6 @@ impl InitialStatesPool {
 
     pub fn remove_one(&self) -> Option<HashMap<String, u32>> {
         let mut pool = self.0.lock().unwrap();
-
         if pool.len() == 0 {
             return None;
         } else {
