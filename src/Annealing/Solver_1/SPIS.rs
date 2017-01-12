@@ -22,7 +22,6 @@ use EnergyType;
 use MrResult;
 use hwloc;
 use pbr;
-use rand;
 use libc;
 use num_cpus;
 use super::Shared;
@@ -40,8 +39,8 @@ use std::thread;
 use std::sync::{Arc, Mutex};
 use pbr::{ProgressBar,MultiBar};
 use std::f64;
-use rand::Rng;
-use std::thread::JoinHandle;
+
+
 /**
  * A solver will take a problem and use simulated annealing
  * to try and find an optimal state.
@@ -325,6 +324,7 @@ impl Solver {
 	 			let handles: Vec<_> = (0..num_cores).map(|core| {
 	 				let mut pb=mb.create_bar(neigh_pool.size()/num_cores as u64);
  			        pb.show_message = true;
+		            let child_topo = cpu_topology.clone();
 		            					
 					let (mut master_state_c, mut problem_c) = (master_state.clone(), problem.clone());
 	            	let (elapsed_steps_c, temperature_c,
@@ -726,7 +726,7 @@ impl Solver {
     /// *  
 	************************************************************************************************************
 	************************************************************************************************************/
-	pub fn solve_parallel_v3(&mut self, min_temperature: Option<f64>, max_temperature: Option<f64>, population_size: usize,
+	pub fn solve_parallel_v3(&mut self, min_temperature: Option<f64>, max_temperature: Option<f64>, population_size: u32
                         problem: &mut Problem)
                         -> MrResult {
                         	
@@ -748,138 +748,83 @@ impl Solver {
  	    
  	    //Generate a Population of specified size with different configurations randomly selected
  	    //from the space state
-		let mut population = problem.get_population(&master_state,population_size);
-		
+		let mut population = problem.get_population(master_state,population_size);
+
         
 		let mut elapsed_steps = Shared::ElapsedSteps::new();
  		
  		let mut mb = MultiBar::new();
  		/************************************************************************************************************/
         start_time = time::precise_time_ns();
-        
         'outer: loop {
         	
         		if elapsed_steps.get() > self.max_steps{
         			break 'outer;
-        		}         
+        		}        
         		
         		//Shuffle pointers of population elements 
         		rand::thread_rng().shuffle(&mut population);
         		//Divide the population in num_cores chunks
-				let mut population_chunk=population.clone().chunks_mut(num_cores);
+				let population_chunk=population.chunks_mut(num_cores);
 
-				let mut th_handlers: Vec<JoinHandle<Vec<HashMap<String, u32>>>>=Vec::with_capacity(num_cores);
-		 		for core in 0..num_cores {
+		 		let handles: Vec<_> = (0..num_cores).map(|core| {
  				
 					let mut pb=mb.create_bar((self.max_steps/num_cores) as u64);
 	 			    pb.show_message = true;
 			        
 	
-					let mut problem_c = problem.clone();
-		        	let elapsed_steps_c = elapsed_steps.clone();
+					let mut problem_c = (population.clone(), problem.clone());
+		        	let elapsed_steps_c = 	elapsed_steps.clone();
 	
 					let nrg_type = self.clone().energy_type;
 					let max_steps= self.clone().max_steps;
 					let cooling_sched= self.clone().cooling_schedule;
 					let cooler_c=cooler.clone();
 			
-					let sub_population = population_chunk.next().unwrap();				
-					let mut temperature = max_temp;
+					let sub_population = population_chunk.next();				
+					let mut temperature = 0;
 	
-
+ 	 			
  	 			    /************************************************************************************************************/
-	 				th_handlers.push(thread::spawn (move || {
- 							let len_subpop=sub_population.len();
-        					let new_sub_population: Vec<HashMap<String, u32>> = Vec::with_capacity(len_subpop);
-
+	 				thread::spawn(move || {
+        					let new_sub_population=Vec::with_capacity(sub_population.len());
         					let mut rng = rand::thread_rng();
+        					for step in 0..sub_population.len()/2 {
+				            	pb.message(&format!("TID [{}] - Population Exploration Status - ", core));
+															
+								let parent_1=sub_population.swap_remove(rng.gen_range(0, sub_population.len()-1));
+								let parent_2=sub_population.swap_remove(rng.gen_range(0, sub_population.len()-1));
+
+								pb.inc();
+								temperature=match cooling_sched {
+					                CoolingSchedule::linear => cooler_c.linear_cooling(step),
+					                CoolingSchedule::exponential => cooler_c.exponential_cooling(step),
+					                CoolingSchedule::basic_exp_cooling => cooler_c.basic_exp_cooling(temperature),
+		           				 };
+        					} 
         					
-        					
-		            		//pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
-							
-							new_sub_population
-					}));
- 				}
+		            		pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
+
+					});
+ 				});
 		 		
  				mb.listen();
- 				
-		        // Wait for all threads to complete and create a new population composed by the resulting
-		        //sub populations
- 				population.clear();
-		        for h in th_handlers {
-		          //  population.iter().chain(h.join().unwrap());
-				h.join().unwrap();
+		        // Wait for all threads to complete before start a search in a new set of neighborhoods.
+		        for h in handles {
+		            h.join().unwrap();
 		        }
+	        
     		}
         
 		MrResult {
-          energy: 9.8,
-          state: master_state,
+          energy: best_energy,
+          state: best_state,
           }
-                      
-    }   
-                                          	
-	fn get_parents(&mut self, sub_population: &mut Vec<HashMap<String, u32>>) -> (&HashMap<String, u32>, &HashMap<String, u32>) {
-		let mut rng = rand::thread_rng(); 
-		let mut parent_1=sub_population.swap_remove(rng.gen_range(0, sub_population.len()-1));
-		let mut parent_2=sub_population.swap_remove(rng.gen_range(0, sub_population.len()-1));
-		return (&parent_1, &parent_2);
-	} 
+        }
+                        
+                        
+    }                     	
 	
-	fn generate_children(&mut self, problem: &mut Problem, parent_1: &HashMap<String, u32>, 
-						parent_2: &HashMap<String, u32>) -> (HashMap<String, u32>, HashMap<String, u32>) {
-		
-		//Enforce Crossover between parent_1 and parent_2 configurations
-		let cutting_point = ((0.4*parent_1.len() as f64).floor()) as usize;
-		
-		let mut child_1 = HashMap::new();
-		let mut child_2 = HashMap::new(); 
-
-		let mut p1_iter=parent_1.iter();
-		let mut p2_iter=parent_2.iter();
-		let (iters_size, _)=p1_iter.size_hint();
-		
-		for i in 0..iters_size{
-			let (mut key_p1,mut val_p1)=p1_iter.next().unwrap();
-			let (mut key_p2,mut val_p2)=p2_iter.next().unwrap();
-			
-			if i < cutting_point {
-            	child_1.insert(*key_p1,*val_p1);
-            	child_2.insert(*key_p2,*val_p2);
-            }else{
-        		child_1.insert(*key_p2,*val_p2);
-            	child_2.insert(*key_p1,*val_p1);
-        	}
-		}
-				
-		//Enforce Uniform Mutation on Child_1: This operator replaces the value of the chosen "gene" (configuration parameter) with a 
-		//uniform random value selected between the upper and lower bounds for that gene (into the space state of the configuration parameter).
-		let mut keys: Vec<_> = child_1.keys().map(|arg| {
-		    arg.clone()
-		}).collect();
-		let mut random_gene=rand::thread_rng().choose(&keys).unwrap();
-		let mut gen_space_state=&problem.params_configurator.params_space_state.get(random_gene);
-		
-        let mut new_value = rand::thread_rng().choose(&*gen_space_state.unwrap()).unwrap();
-		*(child_1).get_mut(random_gene).unwrap() = *new_value;
-
-
-		//Enforce Mutation on Child_2
-		keys=child_2.keys().map(|arg| {
-		    arg.clone()
-		}).collect();
-		random_gene=rand::thread_rng().choose(&keys).unwrap();
-		gen_space_state=&problem.params_configurator.params_space_state.get(random_gene);
-		
-        new_value = rand::thread_rng().choose(&*gen_space_state.unwrap()).unwrap();
-		*(child_2).get_mut(random_gene).unwrap() = *new_value;
-		
-		
-		
-		return (child_1, child_2);
-
-	}
-
 
 	/// Check if the temperature is given by the user or if Tmin and Tmax need to be evaluated
 	fn eval_temperature(&mut self, min_temperature: Option<f64>, max_temperature: Option<f64>, problem: &mut Problem) -> (f64,f64) {
@@ -927,7 +872,7 @@ impl Solver {
 }
 
 //Get the number of physical cpu cores
-fn get_num_cores() -> usize {
+fn get_num_cores() -> u32 {
 	let cpu_topology = Arc::new(Mutex::new(Topology::new()));
 	let topo_rc = cpu_topology.clone();
     let topo_locked = topo_rc.lock().unwrap();
@@ -935,7 +880,7 @@ fn get_num_cores() -> usize {
 }
 
 
-impl Default for Solver { 
+impl Default for Solver {
     fn default() -> Solver {
         Solver {
             max_steps: 10000,

@@ -205,7 +205,7 @@ fn main() {
         SolverVersion::sequential => solver.solve_sequential(args.flag_minTemp,args.flag_maxTemp,&mut problem),
         SolverVersion::parallel_v1 => solver.solve_parallel_v1(args.flag_minTemp,args.flag_maxTemp,&mut problem),
         SolverVersion::parallel_v2 => solver.solve_parallel_v2(args.flag_minTemp,args.flag_maxTemp,&mut problem),
-        SolverVersion::parallel_v3 => solver.solve_parallel_v3(args.flag_minTemp,args.flag_maxTemp,&mut problem),
+        SolverVersion::parallel_v3 => solver.solve_parallel_v3(args.flag_minTemp,args.flag_maxTemp,100,&mut problem),
     };
 
     println!("{}",Yellow.paint("\n-----------------------------------------------------------------------------------------------------------------------------------------------"));

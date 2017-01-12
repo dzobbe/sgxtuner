@@ -268,6 +268,22 @@ impl ParamsConfigurator {
 
         return new_params_state;
     }
+       
+     
+        
+    /**
+	Functions useful for the hybrid annealing-genetic algorithm
+	**/        
+	             
+    pub fn get_rand_population(&mut self, params_state: &HashMap<String, u32>, size: usize) -> Vec<HashMap<String, u32>>{
+    	let mut res_vec=Vec::with_capacity(size);
+    	for i in 0..size {
+    		res_vec.push(self.get_rand_neighborhood(params_state));
+    	}
+    	return res_vec;
+    }
+    
+    
 }
 
 

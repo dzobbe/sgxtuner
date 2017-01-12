@@ -83,4 +83,13 @@ impl Problem {
     pub fn rand_state(&mut self, state: &HashMap<String, u32>) -> HashMap<String, u32> {
         return self.params_configurator.get_rand_neighborhood(state);
     }
+    
+    
+    
+    /**
+	Return random population
+	**/
+    pub fn get_population(&mut self, state: &HashMap<String, u32>, size: usize) -> Vec<HashMap<String, u32>> {
+        return self.params_configurator.get_rand_population(state, size)
+    }
 }
