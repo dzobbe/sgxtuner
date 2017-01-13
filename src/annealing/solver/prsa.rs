@@ -70,35 +70,44 @@ impl Solver for Prsa {
             max_temp: self.max_temp,
         };
 
-        let mut start_time = time::precise_time_ns();
-
-
         // Get num_cores initial different populations
         let num_cores = common::get_num_cores();
 
-        let mut master_state = problem.initial_state();
-
         // Generate a Population of specified size with different configurations randomly selected
         // from the space state
-        let mut population = problem.get_population(self.population_size);
+        let mut population = common::StatesPool::new_with_val(problem.get_population(self.population_size));
 
         let mut elapsed_steps = common::ElapsedSteps::new();
 
         let mut mb = MultiBar::new();
         /// *********************************************************************************************************
-        start_time = time::precise_time_ns();
+        let mut start_time = time::precise_time_ns();
         'outer: loop {
 
             if elapsed_steps.get() > self.max_steps {
                 break 'outer;
             }
 
+            let elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+
+            println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
+            println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
+                      time to Complete: {:.2} Hrs",
+                     Green.paint("[TUNER]"),
+                     elapsed_steps.get(),
+                     elapsed_steps.get() as f64 / (self.max_steps as f64) * 100.0,
+                     elapsed_time);
+            println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
+
+
             // Shuffle pointers of population elements
-            rand::thread_rng().shuffle(&mut population);
-            let mut th_handlers: Vec<JoinHandle<Vec<State>>> = Vec::with_capacity(num_cores);
+			population.shuffle();
+			
+            let mut th_handlers: Vec<JoinHandle<_>> = Vec::with_capacity(num_cores);
 
             println!("Pop: {:?}", population);
 
+            // Divide the population in num_cores chunks
             let chunk_size = (self.population_size as f64 / num_cores as f64).floor() as usize;
             let mut chunks: Vec<Vec<State>> =
                 (0..num_cores).map(|_| Vec::with_capacity(num_cores)).collect();
@@ -112,14 +121,10 @@ impl Solver for Prsa {
                     };
                 }
             }
+			
+			println!("SS {}",population.size());
 
-
-            // Divide the population in num_cores chunks
             for core in 0..num_cores {
-
-                let mut pb = mb.create_bar((self.max_steps / num_cores) as u64);
-                pb.show_message = true;
-
 
                 let mut problem_c = problem.clone();
                 let elapsed_steps_c = elapsed_steps.clone();
@@ -128,14 +133,18 @@ impl Solver for Prsa {
                 let max_steps = self.clone().max_steps;
                 let cooling_sched = self.clone().cooling_schedule;
                 let cooler_c = cooler.clone();
-
+				let population_c=population.clone();
                 let sub_population = chunks[core].clone();
                 let mut temperature = self.max_temp;
                 let sub_population_c = sub_population.clone();
+                
 
                 /// *********************************************************************************************************
                 th_handlers.push(thread::spawn(move || {
                     let len_subpop = sub_population_c.len();
+	                let mut pb = mb.create_bar((len_subpop/2) as u64);
+                    pb.show_message = true;
+                    
                     let mut new_sub_population: Vec<State> = Vec::with_capacity(len_subpop);
 
                     let mut rng = rand::thread_rng();
@@ -190,29 +199,26 @@ impl Solver for Prsa {
 
 
                         pb.inc();
+    					elapsed_steps_c.increment();
+    					
                         temperature = match cooling_sched {
                             CoolingSchedule::linear => cooler_c.linear_cooling(step),
                             CoolingSchedule::exponential => cooler_c.exponential_cooling(step),
-                            CoolingSchedule::basic_exp_cooling => {
-                                cooler_c.basic_exp_cooling(temperature)
-                            }
+                            CoolingSchedule::basic_exp_cooling => cooler_c.basic_exp_cooling(temperature),
                         };
+                        
                     }
 
                     pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
 
-                    new_sub_population
+                    population_c.push_bulk(&mut new_sub_population);
                 }));
-
+ 
             }
 
             mb.listen();
 
-            // Wait for all threads to complete and create a new population composed by the resulting
-            // sub populations
-            population.clear();
             for h in th_handlers {
-                //  population.iter().chain(h.join().unwrap());
                 h.join().unwrap();
             }
         }

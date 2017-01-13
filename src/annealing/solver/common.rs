@@ -42,7 +42,7 @@ pub fn get_num_cores() -> usize {
 }
 
 #[derive(Debug, Clone)]
-pub struct InitialStatesPool(Arc<Mutex<Vec<State>>>);
+pub struct StatesPool(Arc<Mutex<Vec<State>>>);
 
 #[derive(Debug, Clone)]
 pub struct NeighborhoodsPool(Arc<Mutex<Vec<State>>>);
@@ -68,15 +68,29 @@ pub struct ThreadsResults(Arc<Mutex<Vec<MrResult>>>);
 
 /// *********************************************************************************************************
 
-impl InitialStatesPool {
+impl StatesPool {
     pub fn new() -> Self {
-        InitialStatesPool(Arc::new(Mutex::new(Vec::new())))
+        StatesPool(Arc::new(Mutex::new(Vec::new())))
+    }
+
+    pub fn new_with_val(init_vec: Vec<State>) -> Self {
+        StatesPool(Arc::new(Mutex::new(init_vec)))
     }
 
     pub fn push(&self, new_elem: State) {
         let mut pool = self.0.lock().unwrap();
         (*pool).push(new_elem);
     }
+
+    pub fn pop(&self) -> Option<State> {
+        let mut pool = self.0.lock().unwrap();
+        (*pool).pop()
+    }
+
+	pub fn shuffle(&self){
+        let mut pool = self.0.lock().unwrap();
+        rand::thread_rng().shuffle(&mut pool);
+	}
 
     pub fn remove_one(&self) -> Option<State> {
         let mut pool = self.0.lock().unwrap();
@@ -91,7 +105,12 @@ impl InitialStatesPool {
         let pool = self.0.lock().unwrap();
         pool.len() as u64
     }
-}
+    
+    pub fn push_bulk(&self, mut v_1: &mut Vec<State>) {
+        let mut pool = self.0.lock().unwrap();
+        (*pool).append(&mut v_1)
+    }
+} 
 
 /// *********************************************************************************************************
 
@@ -128,6 +147,10 @@ impl ElapsedSteps {
     pub fn get(&self) -> usize {
         let steps = self.0.lock().unwrap();
         *steps
+    }
+    pub fn add(&self, val: usize) {
+        let steps = self.0.lock().unwrap();
+        *steps=*steps + val;
     }
 }
 /// *********************************************************************************************************

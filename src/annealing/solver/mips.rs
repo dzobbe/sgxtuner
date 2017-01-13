@@ -81,7 +81,7 @@ impl Solver for Mips {
         // Creation of the pool of Initial States. It will be composed by the initial default state
         // given by the user and by other num_cores-1 states generated in a random way
         let mut initial_state = problem.initial_state();
-        let mut initial_states_pool = common::InitialStatesPool::new();
+        let mut initial_states_pool = common::StatesPool::new();
         initial_states_pool.push(initial_state.clone());
         for i in 1..num_cores {
             initial_states_pool.push(problem.rand_state());
