@@ -77,36 +77,24 @@ pub enum ExecutionType {
 
 
 
-// The Docopt usage string.
-const USAGE: &'static str =
-    "
-Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] \
-     --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] \
-     --numIter=<numIter> [-tp] [--maxTemp=<maxTemperature>] [-mt] [--minTemp=<minTemperature>] \
-     [-e] --energy=<energy> [-c] --cooling=<cooling> --version=<version>
+//The Docopt usage string.
+const USAGE: &'static str = "
+Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] [--maxTemp=<maxTemperature>] [-mt] [--minTemp=<minTemperature>] [-e] --energy=<energy> [-c] --cooling=<cooling> --version=<version>
 
 Options:
-    -t,    \
-     --targ=<args>     	Target Path.
-    --args2targ=<args>          Arguments for Target \
-     (Specify Host and Port!).
+    -t,    --targ=<args>     	Target Path.
+    --args2targ=<args>          Arguments for Target (Specify Host and Port!).
     -b,    --bench=<args>     	Benchmark Path.
-    \
-     --args2bench=<args>         Arguments for Benchmark
-    -ms,   --maxSteps=<args>    Max \
-     Steps of Annealing.
-    -ni,   --numIter=<args>     Number of Iterations for each stage of \
-     exploration
+    --args2bench=<args>         Arguments for Benchmark
+    -ms,   --maxSteps=<args>    Max Steps of Annealing.
+    -ni,   --numIter=<args>     Number of Iterations for each stage of exploration
     -tp,   --maxTemp=<args>     (Optional) Max Temperature.
-    -mt,   \
-     --minTemp=<args>     (Optional) Min Temperature.
-    -e,	   --energy=<args>      Energy to \
-     eval (latency or throughput)
-    -c,    --cooling=<args>     Cooling Schedule (linear, \
-     exponential, basic_exp_cooling)
-    -v,	   --version=<args>     Type of solver to use \
-     (seqsea, spis, mips, prsa)
+    -mt,   --minTemp=<args>     (Optional) Min Temperature.
+    -e,	   --energy=<args>      Energy to eval (latency or throughput)
+    -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
+    -v,	   --version=<args>     Type of solver to use (seqsea, spis, mips, prsa)
 ";
+
 
 
 
