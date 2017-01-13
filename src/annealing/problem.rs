@@ -16,12 +16,13 @@
 ///  limitations under the License.
 /// ///////////////////////////////////////////////////////////////////////////
 
-use Parameters;
+use states_gen;
+use energy_eval;
 use EnergyType;
-use EnergyEval;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use rustc_serialize::Encodable;
+use State;
 
 /**
  * A problem represents something to be solved using simulated
@@ -30,8 +31,8 @@ use rustc_serialize::Encodable;
  */
 #[derive(Debug, Clone)]
 pub struct Problem {
-    pub params_configurator: Parameters::ParamsConfigurator,
-    pub energy_evaluator: EnergyEval::EnergyEval,
+    pub params_configurator: states_gen::ParamsConfigurator,
+    pub energy_evaluator: energy_eval::EnergyEval,
 }
 
 
@@ -39,7 +40,7 @@ impl Problem {
     /**
 	Return space of Neighborhoods of a specific state given in input
 	**/
-    pub fn neigh_space(&mut self, state: &HashMap<String, u32>) -> Vec<HashMap<String, u32>> {
+    pub fn neigh_space(&mut self, state: &State) -> Vec<State> {
         return self.params_configurator.get_neigh_one_varying(state);
     }
 
@@ -48,7 +49,7 @@ impl Problem {
 	Start Extraction of Initial State: it takes the Parameters Configuration 
     given in input
 	**/
-    pub fn initial_state(&mut self) -> HashMap<String, u32> {
+    pub fn initial_state(&mut self) -> State {
         return self.params_configurator.get_initial_param_conf();
     }
 
@@ -58,7 +59,7 @@ impl Problem {
     specific parameter configuration and evaluate the performance result
 	**/
     pub fn energy(&mut self,
-                  state: &HashMap<String, u32>,
+                  state: &State,
                   energy_type: EnergyType,
                   id_thread: usize)
                   -> Option<f64> {
@@ -70,18 +71,18 @@ impl Problem {
 	Start Extraction of New Neighborhood State 
 	**/
     pub fn new_state(&mut self,
-                     state: &HashMap<String, u32>,
+                     state: &State,
                      max_steps: usize,
                      current_step: usize)
-                     -> Option<HashMap<String, u32>> {
+                     -> Option<State> {
         return self.params_configurator.get_neighborhood(state, max_steps, current_step);
     }
 
     /**
 	Return a random state
 	**/
-    pub fn rand_state(&mut self, state: &HashMap<String, u32>) -> HashMap<String, u32> {
-        return self.params_configurator.get_rand_neighborhood(state);
+    pub fn rand_state(&mut self) -> State {
+        return self.params_configurator.get_rand_param();
     }
     
     
@@ -89,7 +90,7 @@ impl Problem {
     /**
 	Return random population
 	**/
-    pub fn get_population(&mut self, state: &HashMap<String, u32>, size: usize) -> Vec<HashMap<String, u32>> {
-        return self.params_configurator.get_rand_population(state, size)
+    pub fn get_population(&mut self, size: usize) -> Vec<State> {
+        return self.params_configurator.get_rand_population(size)
     }
 }

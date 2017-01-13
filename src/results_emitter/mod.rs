@@ -4,12 +4,12 @@ use influent::client::{Client, Credentials};
 use influent::measurement::{Measurement, Value};
 
 use csv;
-use Parameters;
+use states_gen;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::io::{BufWriter, BufReader, BufRead};
 use std::collections::HashMap;
-
+use State;
 
 pub struct Emitter2File {
     csv_writer: csv::Writer<File>,
@@ -18,7 +18,7 @@ pub struct Emitter2File {
 
 pub struct Emitter2Influx {
     host: String,
-    port: u32,
+    port: usize,
     client: Client,
 }
 
@@ -29,9 +29,9 @@ pub trait Emitter {
     fn new() -> Self;
     fn send_update(&mut self,
                    measured_val: f64,
-                   measured_state: &HashMap<String, u32>,
+                   measured_state: &State,
                    best_val: f64,
-                   best_state: &HashMap<String, u32>,
+                   best_state: &State,
                    num_iter: usize);
 }
 
@@ -62,9 +62,9 @@ pub trait Emitter {
 //
 // fn send_update(&mut self,
 // measured_val: f64,
-// measured_state: &HashMap<String, u32>,
+// measured_state: &State,
 // best_val: f64,
-// best_state: &HashMap<String, u32>,
+// best_state: &State,
 // num_iter: u64) {
 //
 // prepare measurement
@@ -124,9 +124,9 @@ impl Emitter for Emitter2File {
 
     fn send_update(&mut self,
                    measured_val: f64,
-                   measured_state: &HashMap<String, u32>,
+                   measured_state: &State,
                    best_val: f64,
-                   best_state: &HashMap<String, u32>,
+                   best_state: &State,
                    num_iter: usize) {
 
         let mut vec_2_write: Vec<String> = Vec::new();

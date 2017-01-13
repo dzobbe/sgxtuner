@@ -1,21 +1,51 @@
+/// ///////////////////////////////////////////////////////////////////////////
+///  File: Annealing/Solver/Common.rs
+/// ///////////////////////////////////////////////////////////////////////////
+///  Copyright 2017 Giovanni Mazzeo
+///
+///  Licensed under the Apache License, Version 2.0 (the "License");
+///  you may not use this file except in compliance with the License.
+///  You may obtain a copy of the License at
+///
+///      http://www.apache.org/licenses/LICENSE-2.0
+///
+///  Unless required by applicable law or agreed to in writing, software
+///  distributed under the License is distributed on an "AS IS" BASIS,
+///  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+///  See the License for the specific language governing permissions and
+///  limitations under the License.
+/// ///////////////////////////////////////////////////////////////////////////
+
+
 use rand;
+use hwloc;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use CoolingSchedule;
 use rand::{thread_rng, Rng};
-use super::Cooler::{Cooler, StepsCooler, TimeCooler};
+use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
+use hwloc::{Topology, ObjectType, CPUBIND_THREAD, CpuSet};
+use State;
 
 #[derive(Debug, Clone)]
 pub struct MrResult {
     pub energy: f64,
-    pub state: HashMap<String, u32>,
+    pub state: State,
+}
+
+//Get the number of physical cpu cores
+pub fn get_num_cores() -> usize {
+	let cpu_topology = Arc::new(Mutex::new(Topology::new()));
+	let topo_rc = cpu_topology.clone();
+    let topo_locked = topo_rc.lock().unwrap();
+	return (*topo_locked).objects_with_type(&ObjectType::Core).unwrap().len();
 }
 
 #[derive(Debug, Clone)]
-pub struct InitialStatesPool(Arc<Mutex<Vec<HashMap<String, u32>>>>);
+pub struct InitialStatesPool(Arc<Mutex<Vec<State>>>);
 
 #[derive(Debug, Clone)]
-pub struct NeighborhoodsPool(Arc<Mutex<Vec<HashMap<String, u32>>>>);
+pub struct NeighborhoodsPool(Arc<Mutex<Vec<State>>>);
 
 #[derive(Debug, Clone)]
 pub struct ElapsedSteps(Arc<Mutex<usize>>);
@@ -43,12 +73,12 @@ impl InitialStatesPool {
         InitialStatesPool(Arc::new(Mutex::new(Vec::new())))
     }
 
-    pub fn push(&self, new_elem: HashMap<String, u32>) {
+    pub fn push(&self, new_elem: State) {
         let mut pool = self.0.lock().unwrap();
         (*pool).push(new_elem);
     }
 
-    pub fn remove_one(&self) -> Option<HashMap<String, u32>> {
+    pub fn remove_one(&self) -> Option<State> {
         let mut pool = self.0.lock().unwrap();
         if pool.len() == 0 {
             return None;
@@ -66,11 +96,11 @@ impl InitialStatesPool {
 /// *********************************************************************************************************
 
 impl NeighborhoodsPool {
-    pub fn new(neighs: Vec<HashMap<String, u32>>) -> Self {
+    pub fn new(neighs: Vec<State>) -> Self {
         NeighborhoodsPool(Arc::new(Mutex::new(neighs)))
     }
 
-    pub fn remove_one(&self) -> Option<HashMap<String, u32>> {
+    pub fn remove_one(&self) -> Option<State> {
         let mut neighs = self.0.lock().unwrap();
 
         if neighs.len() == 0 {
@@ -130,7 +160,7 @@ impl SubsequentRejStates {
         *rejected
     }
 
-    pub fn reset(&self) {
+    pub fn reset(&self) { 
         let mut rejected = self.0.lock().unwrap();
         *rejected = 0;
     }

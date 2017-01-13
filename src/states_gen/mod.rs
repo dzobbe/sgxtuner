@@ -10,13 +10,15 @@ use rand::Rng;
 use ansi_term::Colour::{Yellow, Red};
 use std::boxed::Box;
 use std::mem;
+use State;
 
 #[derive(Clone,Debug,RustcEncodable)]
 pub struct ParamsConfigurator {
+	pub default_param: State,
     // Path of the file where the parameters configuration is
     pub param_file_path: String,
     // HashMap that stores the space state of each parameter
-    pub params_space_state: HashMap<String, Vec<u32>>,
+    pub params_space_state: HashMap<String, Vec<usize>>,
     // Indexes of parameters. It is needed to have an order of the parameters
     // for the insertion of new states into the visited_params_state.
     pub params_indexes: HashMap<String, u8>,
@@ -36,7 +38,7 @@ impl ParamsConfigurator {
 	Access the initial-params.conf file and extract the info on parameters to tune
 	It returns the initial params state given in input by the user
 	**/
-    pub fn get_initial_param_conf(&mut self) -> HashMap<String, u32> {
+    pub fn get_initial_param_conf(&mut self) -> State {
 
         let f = self.param_file_path.clone();
         // Create a path to the desired file
@@ -49,7 +51,7 @@ impl ParamsConfigurator {
             Ok(file) => file,
         };
 
-        let mut initial_params_state: HashMap<String, u32> = HashMap::new();
+        let mut initial_params_state: State = HashMap::new();
         let file_reader = BufReader::new(&file);
         let mut index = 0;
         for (_, line) in file_reader.lines().enumerate() {
@@ -90,9 +92,9 @@ impl ParamsConfigurator {
 
 
             let space_state_elems =
-                ParamsConfigurator::get_space_state(var_lbound.parse::<u32>().unwrap(),
-                                                    var_ubound.parse::<u32>().unwrap(),
-                                                    var_step.parse::<u32>().unwrap());
+                ParamsConfigurator::get_space_state(var_lbound.parse::<usize>().unwrap(),
+                                                    var_ubound.parse::<usize>().unwrap(),
+                                                    var_step.parse::<usize>().unwrap());
             let space_state_elems_c = space_state_elems.clone();
 
             self.params_space_state
@@ -100,7 +102,7 @@ impl ParamsConfigurator {
             self.params_indexes.insert(var_name.to_string(), index);
             index = index + 1;
 
-            initial_params_state.insert(var_name.to_string(), var_value.parse::<u32>().unwrap());
+            initial_params_state.insert(var_name.to_string(), var_value.parse::<usize>().unwrap());
 
 
             println!("{} {:?}", Yellow.paint("Input Parameter ==> "), var_name);
@@ -120,6 +122,8 @@ impl ParamsConfigurator {
 
         }
 
+		self.default_param=initial_params_state.clone();
+		
         return initial_params_state.clone();
 
     }
@@ -129,7 +133,7 @@ impl ParamsConfigurator {
 	Private function useful to generate the whole space state for each parameter based on the [min:max:step] values
 	given in input by the user.
 	**/
-    fn get_space_state(lbound: u32, ubound: u32, step: u32) -> Vec<u32> {
+    fn get_space_state(lbound: usize, ubound: usize, step: usize) -> Vec<usize> {
         let mut res_vec = Vec::new();
         let num_it = (ubound - lbound) / step;
         for x in 0..num_it {
@@ -145,10 +149,10 @@ impl ParamsConfigurator {
 
 
     pub fn get_neigh_one_varying(&mut self,
-                                 current_state: &HashMap<String, u32>)
-                                 -> Vec<HashMap<String, u32>> {
+                                 current_state: &State)
+                                 -> Vec<State> {
 
-        let mut neighborhoods: Vec<HashMap<String, u32>> = Vec::new();
+        let mut neighborhoods: Vec<State> = Vec::new();
 
         neighborhoods.clear();
 
@@ -175,10 +179,10 @@ impl ParamsConfigurator {
 	Then, the more the number of steps executed increase, the more the Neighborhood space gets smaller.   
 	**/
     pub fn get_neighborhood(&mut self,
-                            params_state: &HashMap<String, u32>,
+                            params_state: &State,
                             max_anneal_steps: usize,
                             current_anneal_step: usize)
-                            -> Option<HashMap<String, u32>> {
+                            -> Option<State> {
 
 
         // Evaluate the coefficient with which decrease the size of neighborhood selection (the number of parameters to vary). The factor will
@@ -193,7 +197,7 @@ impl ParamsConfigurator {
         let mut num_params_2_vary = (params_state.len() as f64 * decreasing_factor) as usize;
 
 
-        let mut new_params_state: HashMap<String, u32> = HashMap::new();
+        let mut new_params_state: State = HashMap::new();
         // Temp vector for the history
         let mut state_4_history: Vec<u8> = vec!(0;params_state.len());
 
@@ -249,18 +253,14 @@ impl ParamsConfigurator {
 
 
     /**
-	Function that returns a random neighborhood of the state given in input.
+	Function that returns a random state
 	**/
-    pub fn get_rand_neighborhood(&mut self,
-                                 params_state: &HashMap<String, u32>)
-                                 -> HashMap<String, u32> {
+    pub fn get_rand_param(&mut self) -> State {
 
-        let mut new_params_state: HashMap<String, u32> = HashMap::new();
-        // Temp vector for the history
-        let mut state_4_history: Vec<u8> = vec!(0;params_state.len());
+        let mut new_params_state: State = HashMap::new();
 
         // The HashMap iterator provides (key,value) pair in a random order
-        for (param_name, param_current_value) in params_state.iter() {
+        for (param_name, param_current_value) in self.default_param.iter() {
             let param_space_state = self.params_space_state.get(param_name).unwrap();
             let new_value = rand::thread_rng().choose(&param_space_state).unwrap();
             new_params_state.insert(param_name.clone().to_string(), *new_value);
@@ -273,12 +273,11 @@ impl ParamsConfigurator {
         
     /**
 	Functions useful for the hybrid annealing-genetic algorithm
-	**/        
-	             
-    pub fn get_rand_population(&mut self, params_state: &HashMap<String, u32>, size: usize) -> Vec<HashMap<String, u32>>{
+	**/       
+    pub fn get_rand_population(&mut self, size: usize) -> Vec<State>{
     	let mut res_vec=Vec::with_capacity(size);
     	for i in 0..size {
-    		res_vec.push(self.get_rand_neighborhood(params_state));
+    		res_vec.push(self.get_rand_param());
     	}
     	return res_vec;
     }
@@ -290,6 +289,7 @@ impl ParamsConfigurator {
 impl Default for ParamsConfigurator {
     fn default() -> ParamsConfigurator {
         ParamsConfigurator {
+        	default_param: HashMap::new(),
             param_file_path: "".to_string(),
             params_space_state: HashMap::new(),
             params_indexes: HashMap::new(),

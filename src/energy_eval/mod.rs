@@ -11,8 +11,8 @@ use std::{thread, env};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use super::PerfCounters;
-use super::MeterProxy;
+use perf_counters::PerfMetrics;
+use meter_proxy::MeterProxy;
 use ansi_term::Colour::{Red, Yellow, Green};
 use std::time::Duration;
 use EnergyType;
@@ -20,7 +20,7 @@ use std::net::{TcpStream, Shutdown, IpAddr};
 use std::io::{stdout,Stdout};
 use hwloc::{Topology, CPUBIND_PROCESS, CPUBIND_THREAD,CpuSet, TopologyObject, ObjectType};
 use libc::{kill, SIGTERM};
-
+use State;
 
  
 #[derive(Clone,Debug,RustcEncodable)]
@@ -51,13 +51,13 @@ impl BenchExecTime {
 }
 
 #[derive(Clone)]
-struct SpawnedMeterProxy(Arc<Mutex<HashMap<String,MeterProxy::Meter>>>);
+struct SpawnedMeterProxy(Arc<Mutex<HashMap<String,MeterProxy>>>);
 impl SpawnedMeterProxy {
     fn new() -> Self {
         SpawnedMeterProxy(Arc::new(Mutex::new(HashMap::new())))
     }
     
-    fn insert(&self, address: String, m_proxy_obj: MeterProxy::Meter) {
+    fn insert(&self, address: String, m_proxy_obj: MeterProxy) {
         let mut spawned_vec = self.0.lock().unwrap();
         (*spawned_vec).insert(address, m_proxy_obj);
     }
@@ -67,7 +67,7 @@ impl SpawnedMeterProxy {
         (*spawned_vec).contains_key(&address)
     }
     
-    fn get(&mut self, address: String) -> MeterProxy::Meter {
+    fn get(&mut self, address: String) -> MeterProxy {
         let spawned_vec = self.0.lock().unwrap();
         let res=(*spawned_vec).get(&address).unwrap().clone();
         res
@@ -96,12 +96,12 @@ impl EnergyEval {
 	that will be used by the simulated annealing algorithm for the energy evaluation
 	**/
     pub fn execute_test_instance(&mut self,
-                                 params: &HashMap<String, u32>,
+                                 params: &State,
                                  energy_type: EnergyType,
                                  core: usize)
                                  -> Option<f64> {
 
-        let perf_metrics_handler = PerfCounters::PerfMetrics::new();
+        let perf_metrics_handler = PerfMetrics::new();
         
         //Modify the target and benchmark arguments in order to start different instances
         //on different ports. The annealing core is given to them. This will be sum
@@ -143,7 +143,7 @@ impl EnergyEval {
             /// * 
 			************************************************************************************************************/            
 			
-   			let mut meter_proxy = MeterProxy::Meter::new(target_addr.clone(), target_port, bench_addr.clone(),bench_port);
+   			let mut meter_proxy = MeterProxy::new(target_addr.clone(), target_port, bench_addr.clone(),bench_port);
           	let mut meter_proxy_c = meter_proxy.clone();
         	
             if !spawned_proxies.spawned(bench_port.to_string()){

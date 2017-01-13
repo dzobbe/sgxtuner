@@ -16,14 +16,14 @@ use tokio_core::reactor::{Core, Handle, Timeout};
 use tokio_core::net::{TcpStream, TcpListener};
 use tokio_core::io::{Io, read_exact, write_all, Window};
 use std::sync::{Arc, Mutex, RwLock};
-
+use State;
 
 lazy_static! {
     static ref ERROR: Arc<Mutex<bool>>	= Arc::new(Mutex::new(false));
 }
 
 #[derive(Clone, Debug)]
-pub struct Meter {
+pub struct MeterProxy {
     pub back_address: String,
     pub back_port: u16,
     pub front_address: String,
@@ -33,9 +33,9 @@ pub struct Meter {
 }
 
 
-impl Meter {
-    pub fn new(b_addr: String, b_port: u16, f_addr: String, f_port: u16) -> Meter {
-        Meter {
+impl MeterProxy {
+    pub fn new(b_addr: String, b_port: u16, f_addr: String, f_port: u16) -> MeterProxy {
+        MeterProxy {
             back_address: b_addr,
             back_port: b_port,
             front_address: f_addr,

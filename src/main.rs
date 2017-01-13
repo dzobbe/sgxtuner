@@ -22,23 +22,29 @@ extern crate futures_cpupool;
 extern crate lazy_static;
 extern crate influent;
 
-use ansi_term::Colour::Yellow;
+use ansi_term::Colour::{Green,Yellow};
 use std::time::Duration;
 use std::collections::HashMap;
+use annealing::problem::Problem;
+use annealing::solver::seqsea::Seqsea;
+use annealing::solver::Solver;
+use annealing::solver::common::MrResult;
 
+use std::sync::{Arc, Mutex, Condvar};
+use std::sync::RwLock;
 
-mod PerfCounters;
-mod Parameters;
-mod Annealing;
-mod EnergyEval;
-mod MeterProxy;
-mod ResultsEmitter;
+use docopt::Docopt;
+use std::process::Command;
+use std::thread;
 
-#[derive(Debug, Clone)]
-pub struct MrResult {
-    pub energy: f64,
-    pub state: HashMap<String, u32>,
-}
+mod perf_counters;
+mod states_gen;
+mod annealing;
+mod energy_eval;
+mod meter_proxy;
+mod results_emitter;
+
+type State = HashMap<String,usize>;
 
 
 #[derive(Debug, Clone,RustcDecodable)]
@@ -50,13 +56,13 @@ pub enum CoolingSchedule {
 
 #[derive(Debug, Clone,RustcDecodable)]
 pub enum SolverVersion {
-    sequential,
-    parallel_v1,
-    parallel_v2,
-    parallel_v3,
+    seqsea,
+    spis,
+    mips,
+    prsa,
 }
 
-#[derive(Debug, Clone,RustcDecodable)]
+#[derive(Debug, Clone, Copy, RustcDecodable)]
 pub enum EnergyType {
     throughput,
     latency,
@@ -69,13 +75,7 @@ pub enum ExecutionType {
     parallel,
 }
 
-use std::sync::{Arc, Mutex, Condvar};
-use std::sync::RwLock;
 
-use docopt::Docopt;
-use std::process::Command;
-use PerfCounters::PerfMetrics;
-use std::thread;
 
 //The Docopt usage string.
 const USAGE: &'static str = "
@@ -92,7 +92,7 @@ Options:
     -mt,   --minTemp=<args>     (Optional) Min Temperature.
     -e,	   --energy=<args>      Energy to eval (latency or throughput)
     -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
-    -v,	   --version=<args>     Type of solver to use (sequential, parallel_v1, parallel_v2, parallel_v3)
+    -v,	   --version=<args>     Type of solver to use (seqsea, spis, mips, prsa)
 ";
 
 
@@ -143,9 +143,9 @@ fn main() {
     /// that the simulated annealing algorithm will explore. ParamsConfigurator set initial default parameters
     /// defined in the initial-params.txt input file
     ///
-    let params_config = Parameters::ParamsConfigurator {
+    let params_config = states_gen::ParamsConfigurator {
         param_file_path: "params.conf".to_string(),
-        ..Parameters::ParamsConfigurator::default()
+        ..states_gen::ParamsConfigurator::default()
     };
 
 
@@ -154,7 +154,7 @@ fn main() {
     /// Instantiate the EnergyEval struct needed for start/stop the Target and the Benchmark applications
     /// and then evaluate the energy selected by the user
     ///
-    let energy_eval = EnergyEval::EnergyEval {
+    let energy_eval = energy_eval::EnergyEval {
         target_path: args.flag_targ,
         bench_path: args.flag_bench,
         target_args: args.flag_args2targ,
@@ -168,7 +168,7 @@ fn main() {
     /// Configure the Simulated Annealing problem with the ParamsConfigurator and EnergyEval instances.
     /// Finally,the solver is started
     ///
-    let mut problem = Annealing::Problem::Problem {
+    let mut problem = Problem {
         params_configurator: params_config,
         energy_evaluator: energy_eval,
     };
@@ -191,21 +191,65 @@ fn main() {
         CoolingSchedule::basic_exp_cooling => CoolingSchedule::basic_exp_cooling,
     };
 
-
+	let (t_min,t_max) = eval_temperature(args.flag_minTemp, args.flag_maxTemp, energy_type.clone(), &mut problem);
 	
-    let mut solver = Annealing::Solver::Solver {
-        max_steps: args.flag_maxSteps,
-        energy_type: energy_type,
-        cooling_schedule: cooling_schedule,
-    };
-
 
     /// Start the solver
-    let mr_result: MrResult = match args.flag_version {
-        SolverVersion::sequential => solver.solve_sequential(args.flag_minTemp,args.flag_maxTemp,&mut problem),
-        SolverVersion::parallel_v1 => solver.solve_parallel_v1(args.flag_minTemp,args.flag_maxTemp,&mut problem),
-        SolverVersion::parallel_v2 => solver.solve_parallel_v2(args.flag_minTemp,args.flag_maxTemp,&mut problem),
-        SolverVersion::parallel_v3 => solver.solve_parallel_v3(args.flag_minTemp,args.flag_maxTemp,100,&mut problem),
+    let mut solver = Seqsea {
+    			    	min_temp: t_min,
+    			    	max_temp: t_max,
+				        max_steps: args.flag_maxSteps,
+				        energy_type: energy_type,
+				        cooling_schedule: cooling_schedule.clone(),
+				    };
+        let mr_result: MrResult = solver.solve(&mut problem);
+
+   let mr_result: MrResult = match args.flag_version {
+        SolverVersion::seqsea => {
+    			    let mut solver = annealing::solver::seqsea::Seqsea {
+    			    	min_temp: t_min,
+    			    	max_temp: t_max,
+				        max_steps: args.flag_maxSteps,
+				        energy_type: energy_type,
+				        cooling_schedule: cooling_schedule.clone(),
+				    };
+    			    
+        			solver.solve(&mut problem)
+        			},
+        SolverVersion::spis => {
+    			    let mut solver = annealing::solver::spis::Spis {
+    			    	min_temp: t_min,
+    			    	max_temp: t_max,
+				        max_steps: args.flag_maxSteps,
+				        energy_type: energy_type,
+				        cooling_schedule: cooling_schedule.clone(),
+				    };
+    			    
+        			solver.solve(&mut problem)
+        			},
+        SolverVersion::mips => {
+    			    let mut solver = annealing::solver::mips::Mips {
+    			    	min_temp: t_min,
+    			    	max_temp: t_max,
+				        max_steps: args.flag_maxSteps,
+				        energy_type: energy_type,
+				        cooling_schedule: cooling_schedule.clone(),
+				    };
+    			    
+        			solver.solve(&mut problem)
+        			},
+        SolverVersion::prsa => {
+    			    let mut solver = annealing::solver::prsa::Prsa {
+    			    	min_temp: t_min,
+    			    	max_temp: t_max,
+				        max_steps: args.flag_maxSteps,
+				        population_size: 50,
+				        energy_type: energy_type,
+				        cooling_schedule: cooling_schedule.clone(),
+				    };
+    			    
+        			solver.solve(&mut problem)
+        			},
     };
 
     println!("{}",Yellow.paint("\n-----------------------------------------------------------------------------------------------------------------------------------------------"));
@@ -219,3 +263,49 @@ fn main() {
 }
 
 
+/// Check if the temperature is given by the user or if Tmin and Tmax need to be evaluated
+fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, nrg_type: EnergyType, problem: &mut Problem) -> (f64,f64) {
+	let num_exec=20;
+	let ngr_type_c=nrg_type.clone();
+	
+	let min_temp=match t_min {
+		Some(val) => val,
+		None => 1.0,
+	};
+		
+	let max_temp=match t_max {
+		Some(val) => val,
+		None => {
+			let mut energies = Vec::with_capacity(num_exec);
+		    /// Search for Tmax: a temperature that gives 98% acceptance
+			/// Tmin: equal to 1.	
+            println!("{} Temperature not provided. Starting its Evaluation",
+                     Green.paint("[TUNER]"));
+			let mut state = problem.initial_state();
+	        match problem.energy(&state, nrg_type.clone(), 0) {
+	            Some(nrg) => energies.push(nrg),
+	            None => panic!("The initial configuration does not allow to calculate the energy"),
+	        };
+	        
+         	for i in 0..num_exec{
+		        
+		        let next_state = problem.rand_state();
+	         	match problem.energy(&next_state, ngr_type_c, 0) {
+                    Some(new_energy) => {
+           		        energies.push(new_energy);	
+                    },
+                    None => {
+                        println!("{} The current configuration parameters cannot be evaluated. \
+                                  Skip!",
+                                 Green.paint("[TUNER]"));
+		                    },
+	                };
+		         }  
+             	 	
+             	let desired_prob: f64=0.98; 	
+             	(energies.iter().cloned().fold(0./0., f64::max) - energies.iter().cloned().fold(0./0., f64::min))/desired_prob.ln()
+ 			},
+		};
+		
+		return (min_temp,max_temp);
+	}
