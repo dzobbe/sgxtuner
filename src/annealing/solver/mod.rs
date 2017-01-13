@@ -10,7 +10,6 @@ pub mod prsa;
 pub mod common;
 
 pub trait Solver{ 
-	type State;
 	
     fn solve(&mut self, &mut Problem) -> MrResult;
     

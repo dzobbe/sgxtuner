@@ -59,8 +59,6 @@ pub struct Mips {
 
 impl Solver for Mips {
     
-	type State=HashMap<String, u32>;
-
 
 	fn solve(&mut self, problem: &mut Problem) -> MrResult {
                                 	        	  	

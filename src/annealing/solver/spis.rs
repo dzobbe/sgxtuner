@@ -58,9 +58,6 @@ pub struct Spis {
 }
 
 impl Solver for Spis {
-    
-	type State=HashMap<String, u32>;
-
 
 	fn solve(&mut self, problem: &mut Problem) -> MrResult {
                         	

@@ -57,7 +57,6 @@ pub struct Seqsea {
 
 impl Solver for Seqsea {
 
-	type State=HashMap<String, usize>;
     
     fn solve(&mut self, problem: &mut Problem)
                         -> MrResult {

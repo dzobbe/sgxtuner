@@ -5,5 +5,5 @@ target/debug/annealing-tuner --targ=/home/ubuntu/TUD-Work/scripts/build/build/bi
 --maxSteps=10000 --numIter=1 --maxTemp=100 --minTemp=0.1 \
 --energy=throughput \
 --cooling=basic_exp_cooling \
---version=parallel_v1
+--version=prsa
 

@@ -49,6 +49,8 @@ use std::thread;
 use std::thread::JoinHandle;
 use State;
 
+
+
 #[derive(Debug, Clone)]
 pub struct Prsa {
 	pub min_temp: f64,
@@ -60,9 +62,6 @@ pub struct Prsa {
 }
 
 impl Solver for Prsa {
-    
-	type State=State;
-
 
 	fn solve(&mut self, problem: &mut Problem) -> MrResult {
       
@@ -83,13 +82,130 @@ impl Solver for Prsa {
  	    //Generate a Population of specified size with different configurations randomly selected
  	    //from the space state
  	    let mut population = problem.get_population(self.population_size);
- 	    
+
 		let mut elapsed_steps = common::ElapsedSteps::new();
  		
  		let mut mb = MultiBar::new();
  		/************************************************************************************************************/
         start_time = time::precise_time_ns();
-        
+        'outer: loop {
+        	
+        		if elapsed_steps.get() > self.max_steps{
+        			break 'outer;
+        		}         
+        		
+        		//Shuffle pointers of population elements 
+        		rand::thread_rng().shuffle(&mut population);
+				let mut th_handlers: Vec<JoinHandle<Vec<State>>>=Vec::with_capacity(num_cores);
+				
+				println!("Pop: {:?}",population);
+
+				let chunk_size=(self.population_size as f64 / num_cores as f64).floor() as usize;
+				let mut chunks: Vec<Vec<State>>=(0..num_cores).map(|_| Vec::with_capacity(num_cores)).collect();;
+				for i in 0..num_cores{
+					for j in 0..chunk_size{
+						match population.pop(){
+							Some(v) =>{
+								 chunks[i].push(v);
+								 },
+							None => break,
+						};
+					}
+				}
+				
+				
+        		//Divide the population in num_cores chunks
+				for core in 0..num_cores {
+	 				
+						let mut pb=mb.create_bar((self.max_steps/num_cores) as u64);
+		 			    pb.show_message = true;
+				        
+		
+						let mut problem_c = problem.clone();
+			        	let elapsed_steps_c = elapsed_steps.clone();
+		
+						let nrg_type = self.clone().energy_type;
+						let max_steps= self.clone().max_steps;
+						let cooling_sched= self.clone().cooling_schedule;
+						let cooler_c=cooler.clone();
+				
+						let sub_population = chunks[core].clone();				
+						let mut temperature = self.max_temp; 
+						let sub_population_c=sub_population.clone();
+	
+	 	 			    /************************************************************************************************************/
+		 				th_handlers.push(thread::spawn (move || {
+	 							let len_subpop=sub_population_c.len();
+	        					let mut new_sub_population: Vec<State> = Vec::with_capacity(len_subpop);
+	
+	        					let mut rng = rand::thread_rng();
+	        					for step in 0..len_subpop/2 {
+					            	pb.message(&format!("TID [{}] - Sub-Population Exploration Status - ", core));
+													
+									let (parent_1,parent_2)	= get_parents(&mut sub_population_c.to_vec());
+									
+									let cost_parent_1=problem_c.energy(&parent_1, nrg_type.clone(), core).unwrap();
+									let cost_parent_2=problem_c.energy(&parent_2, nrg_type.clone(), core).unwrap();
+	
+									let (mut child_1, mut child_2) = generate_children(&mut problem_c, &parent_1,&parent_2);
+									
+									let cost_child_1=problem_c.energy(&child_1, nrg_type.clone(), core).unwrap();
+									let cost_child_2=problem_c.energy(&child_2, nrg_type.clone(), core).unwrap();								
+															
+									//Compare cost of parent_1 with cost of child_2	
+			  						let range = Range::new(0.0, 1.0);							
+			        
+			                        let de_p1_c2 = match nrg_type {
+			                            EnergyType::throughput => cost_parent_1 - cost_child_2,
+			                            EnergyType::latency => -(cost_parent_1 - cost_child_2), 
+			                        }; 
+			
+			                        if range.ind_sample(&mut rng) < 1.0/(1.0+(de_p1_c2 / temperature).exp()) {
+		                        		new_sub_population.push(parent_1);
+		                        	}else{
+		                        		new_sub_population.push(child_2);
+	                    			}	
+	
+			                        									
+		                        
+									//Compare cost of parent_2 with cost of child_1							
+			                        let de_p2_c1 = match nrg_type {
+			                            EnergyType::throughput => cost_parent_2 - cost_child_1,
+			                            EnergyType::latency => -(cost_parent_2 - cost_child_1), 
+			                        }; 
+			
+			                        if range.ind_sample(&mut rng) < 1.0/(1.0+(de_p2_c1 / temperature).exp()) {
+		                        		new_sub_population.push(parent_2);
+		                        	}else{
+		                        		new_sub_population.push(child_1);
+	                    			}
+									
+	
+									pb.inc();
+									temperature=match cooling_sched {
+						                CoolingSchedule::linear => cooler_c.linear_cooling(step),
+						                CoolingSchedule::exponential => cooler_c.exponential_cooling(step),
+						                CoolingSchedule::basic_exp_cooling => cooler_c.basic_exp_cooling(temperature),
+			           				 };
+	        					} 
+	        					
+			            		pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
+								
+								new_sub_population
+						}));
+ 					
+		 		}
+				
+ 				mb.listen();
+ 				
+		        // Wait for all threads to complete and create a new population composed by the resulting
+		        //sub populations
+ 				population.clear();
+		        for h in th_handlers {
+		          //  population.iter().chain(h.join().unwrap());
+					h.join().unwrap();
+		        }
+    		}
         
         
 		MrResult {

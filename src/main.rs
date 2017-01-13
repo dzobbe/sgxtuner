@@ -190,21 +190,13 @@ fn main() {
         CoolingSchedule::linear => CoolingSchedule::linear,
         CoolingSchedule::basic_exp_cooling => CoolingSchedule::basic_exp_cooling,
     };
+       
 
 	let (t_min,t_max) = eval_temperature(args.flag_minTemp, args.flag_maxTemp, energy_type.clone(), &mut problem);
-	
 
-    /// Start the solver
-    let mut solver = Seqsea {
-    			    	min_temp: t_min,
-    			    	max_temp: t_max,
-				        max_steps: args.flag_maxSteps,
-				        energy_type: energy_type,
-				        cooling_schedule: cooling_schedule.clone(),
-				    };
-        let mr_result: MrResult = solver.solve(&mut problem);
 
-   let mr_result: MrResult = match args.flag_version {
+
+   	let mr_result: MrResult = match args.flag_version {
         SolverVersion::seqsea => {
     			    let mut solver = annealing::solver::seqsea::Seqsea {
     			    	min_temp: t_min,
@@ -243,7 +235,7 @@ fn main() {
     			    	min_temp: t_min,
     			    	max_temp: t_max,
 				        max_steps: args.flag_maxSteps,
-				        population_size: 50,
+				        population_size: 10,
 				        energy_type: energy_type,
 				        cooling_schedule: cooling_schedule.clone(),
 				    };
