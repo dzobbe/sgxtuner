@@ -84,13 +84,13 @@ impl Problem {
     pub fn rand_state(&mut self) -> State {
         return self.params_configurator.get_rand_param();
     }
-    
-    
-    
+
+
+
     /**
 	Return random population
 	**/
     pub fn get_population(&mut self, size: usize) -> Vec<State> {
-        return self.params_configurator.get_rand_population(size)
+        return self.params_configurator.get_rand_population(size);
     }
 }

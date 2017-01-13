@@ -54,7 +54,6 @@ impl Cooler for TimeCooler {
 
 
 impl Cooler for StepsCooler {
-	
     fn exponential_cooling(&self, step: usize) -> f64 {
         if self.min_temp <= 0.0 {
             panic!("Exponential cooling requires a minimum temperature greater than zero");
@@ -77,14 +76,14 @@ impl Cooler for StepsCooler {
     }
 
     fn basic_exp_cooling(&self, current_temp: f64) -> f64 {
-    	if self.min_temp <= 0.0 {
+        if self.min_temp <= 0.0 {
             panic!("The minimum temperature must be greater than zero");
         }
-    	
-    	if current_temp <= self.min_temp {
-    		return self.min_temp;
-    	}else{
-        	return current_temp * 0.999;
-    	}
+
+        if current_temp <= self.min_temp {
+            return self.min_temp;
+        } else {
+            return current_temp * 0.999;
+        }
     }
 }

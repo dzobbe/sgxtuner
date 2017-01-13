@@ -14,7 +14,7 @@ use State;
 
 #[derive(Clone,Debug,RustcEncodable)]
 pub struct ParamsConfigurator {
-	pub default_param: State,
+    pub default_param: State,
     // Path of the file where the parameters configuration is
     pub param_file_path: String,
     // HashMap that stores the space state of each parameter
@@ -122,8 +122,8 @@ impl ParamsConfigurator {
 
         }
 
-		self.default_param=initial_params_state.clone();
-		
+        self.default_param = initial_params_state.clone();
+
         return initial_params_state.clone();
 
     }
@@ -148,9 +148,7 @@ impl ParamsConfigurator {
     }
 
 
-    pub fn get_neigh_one_varying(&mut self,
-                                 current_state: &State)
-                                 -> Vec<State> {
+    pub fn get_neigh_one_varying(&mut self, current_state: &State) -> Vec<State> {
 
         let mut neighborhoods: Vec<State> = Vec::new();
 
@@ -231,24 +229,24 @@ impl ParamsConfigurator {
 
 
         // Extract the string sequence of the new state
-     /*   let mut byte_state_str = String::new();
-        for x in 0..state_4_history.len() {
-            byte_state_str.push_str(&*state_4_history.get(x).unwrap().to_string());
-        }
-
-        state_4_history.clear();*/
+        //   let mut byte_state_str = String::new();
+        // for x in 0..state_4_history.len() {
+        // byte_state_str.push_str(&*state_4_history.get(x).unwrap().to_string());
+        // }
+        //
+        // state_4_history.clear();
 
 
         // Insert the new state into the visited hashmap. For memory efficiency the visited states parameters
         // values are coded through their index into the space_state vector.
-       // let there_wasnt = self.visited_params_states.insert(byte_state_str.clone());
+        // let there_wasnt = self.visited_params_states.insert(byte_state_str.clone());
 
         // If the neighborhood selected has been already visited recursively re-call the function
         // In case all states have been visited returns None to the Annealing Solver which will interrupt
         // the evaluation. Otherwise, the new state is added to the visited ones and the function return it.
 
-        
-         return Some(new_params_state)
+
+        return Some(new_params_state);
     }
 
 
@@ -268,28 +266,26 @@ impl ParamsConfigurator {
 
         return new_params_state;
     }
-       
-     
-        
+
+
+
     /**
 	Functions useful for the hybrid annealing-genetic algorithm
-	**/       
-    pub fn get_rand_population(&mut self, size: usize) -> Vec<State>{
-    	let mut res_vec=Vec::with_capacity(size);
-    	for i in 0..size {
-    		res_vec.push(self.get_rand_param());
-    	}
-    	return res_vec;
+	**/
+    pub fn get_rand_population(&mut self, size: usize) -> Vec<State> {
+        let mut res_vec = Vec::with_capacity(size);
+        for i in 0..size {
+            res_vec.push(self.get_rand_param());
+        }
+        return res_vec;
     }
-    
-    
 }
 
 
 impl Default for ParamsConfigurator {
     fn default() -> ParamsConfigurator {
         ParamsConfigurator {
-        	default_param: HashMap::new(),
+            default_param: HashMap::new(),
             param_file_path: "".to_string(),
             params_space_state: HashMap::new(),
             params_indexes: HashMap::new(),

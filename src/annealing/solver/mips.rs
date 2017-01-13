@@ -16,13 +16,13 @@
 ///  limitations under the License.
 /// ///////////////////////////////////////////////////////////////////////////
 
-/******************************************************************************
-*******************************************************************************
+/// ****************************************************************************
+/// *****************************************************************************
 /// **
 /// Multiple Independent Parallel Searcher (MIPS)
-/// *  
-*******************************************************************************
-*******************************************************************************/
+/// *
+/// *****************************************************************************
+/// ****************************************************************************
 use annealing::solver::Solver;
 use annealing::problem::Problem;
 use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
@@ -32,7 +32,7 @@ use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
 
 use time;
-use CoolingSchedule; 
+use CoolingSchedule;
 use EnergyType;
 use hwloc;
 use pbr;
@@ -40,34 +40,32 @@ use rand;
 use libc;
 use num_cpus;
 
-use rand::{Rng,thread_rng};
+use rand::{Rng, thread_rng};
 use rand::distributions::{Range, IndependentSample};
 use ansi_term::Colour::Green;
 use std::collections::HashMap;
-use pbr::{ProgressBar,MultiBar};
+use pbr::{ProgressBar, MultiBar};
 use std::thread;
 
 
 #[derive(Debug, Clone)]
 pub struct Mips {
-	pub min_temp: f64,
-	pub max_temp: f64,		
+    pub min_temp: f64,
+    pub max_temp: f64,
     pub max_steps: usize,
     pub cooling_schedule: CoolingSchedule,
     pub energy_type: EnergyType,
 }
 
 impl Solver for Mips {
-    
+    fn solve(&mut self, problem: &mut Problem) -> MrResult {
 
-	fn solve(&mut self, problem: &mut Problem) -> MrResult {
-                                	        	  	
-    	let cooler=StepsCooler {
-                      max_steps:self.max_steps,
-                      min_temp: self.min_temp,
-                      max_temp: self.max_temp,
-                      };
-                        	
+        let cooler = StepsCooler {
+            max_steps: self.max_steps,
+            min_temp: self.min_temp,
+            max_temp: self.max_temp,
+        };
+
         let mut results_emitter = Emitter2File::new();
 
         ("{}",Green.paint("\n-------------------------------------------------------------------------------------------------------------------"));
@@ -76,26 +74,26 @@ impl Solver for Mips {
         println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
 
-	 	let num_cores = common::get_num_cores();
-        
-		let mut elapsed_steps = common::ElapsedSteps::new();
-		
-		//Creation of the pool of Initial States. It will be composed by the initial default state
-		//given by the user and by other num_cores-1 states generated in a random way
-		let mut initial_state = problem.initial_state();
-		let mut initial_states_pool = common::InitialStatesPool::new();
-        initial_states_pool.push(initial_state.clone()); 
-        for i in 1..num_cores{
-	        initial_states_pool.push(problem.rand_state());    		
-        }  		 
+        let num_cores = common::get_num_cores();
 
- 		//Create a muti-bar
- 		let mut mb = MultiBar::new();
+        let mut elapsed_steps = common::ElapsedSteps::new();
 
-		let threads_res=common::ThreadsResults::new();
+        // Creation of the pool of Initial States. It will be composed by the initial default state
+        // given by the user and by other num_cores-1 states generated in a random way
+        let mut initial_state = problem.initial_state();
+        let mut initial_states_pool = common::InitialStatesPool::new();
+        initial_states_pool.push(initial_state.clone());
+        for i in 1..num_cores {
+            initial_states_pool.push(problem.rand_state());
+        }
 
-	 	let mut overall_start_time = time::precise_time_ns();
- 		let handles: Vec<_> = (0..num_cores).map(|core| {
+        // Create a muti-bar
+        let mut mb = MultiBar::new();
+
+        let threads_res = common::ThreadsResults::new();
+
+        let mut overall_start_time = time::precise_time_ns();
+        let handles: Vec<_> = (0..num_cores).map(|core| {
  				
 				let mut pb=mb.create_bar((self.max_steps/num_cores) as u64);
  			    pb.show_message = true;
@@ -258,44 +256,40 @@ impl Solver for Mips {
 	            })
 
 	        }).collect();
-			
-			mb.listen();
-	        // Wait for all threads to complete before start a search in a new set of neighborhoods.
-	        for h in handles {
-	            h.join().unwrap();
-	        }
-	        
-	         
-			/************************************************************************************************************/	
-	        //Get results of worker threads (each one will put its best evaluated energy) and 
-	        //choose between them which one will be the best one.
-	        let mut workers_res = threads_res.get_coll();
-	       	let first_elem = workers_res.pop().unwrap();
-	       	
-	       	let mut best_energy = first_elem.energy;
-	       	let mut best_state  = first_elem.state;
-	       	
-	       	for elem in workers_res.iter() {
-	       		let diff=match self.energy_type {
-                        EnergyType::throughput => {
-                        	 elem.energy-best_energy
-                        },
-                        EnergyType::latency => {
-                        	-(elem.energy-best_energy)
-                        } 
-                    };
-	       		if diff > 0.0 {
-	       			best_energy=elem.clone().energy;
-	       			best_state=elem.clone().state;
-	       		}
-	       	}
-		       
-			
 
-		MrResult {
-          energy: best_energy,
-          state: best_state,
-          }
-    } 
-                        
+        mb.listen();
+        // Wait for all threads to complete before start a search in a new set of neighborhoods.
+        for h in handles {
+            h.join().unwrap();
+        }
+
+
+        /// *********************************************************************************************************
+
+        // Get results of worker threads (each one will put its best evaluated energy) and
+        // choose between them which one will be the best one.
+        let mut workers_res = threads_res.get_coll();
+        let first_elem = workers_res.pop().unwrap();
+
+        let mut best_energy = first_elem.energy;
+        let mut best_state = first_elem.state;
+
+        for elem in workers_res.iter() {
+            let diff = match self.energy_type {
+                EnergyType::throughput => elem.energy - best_energy,
+                EnergyType::latency => -(elem.energy - best_energy), 
+            };
+            if diff > 0.0 {
+                best_energy = elem.clone().energy;
+                best_state = elem.clone().state;
+            }
+        }
+
+
+
+        MrResult {
+            energy: best_energy,
+            state: best_state,
+        }
+    }
 }

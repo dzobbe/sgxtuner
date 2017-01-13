@@ -16,13 +16,13 @@
 ///  limitations under the License.
 /// ///////////////////////////////////////////////////////////////////////////
 
-/******************************************************************************
-*******************************************************************************
+/// ****************************************************************************
+/// *****************************************************************************
 /// **
 /// SEQuential SEArcher (SEQSEA)
-/// *  
-*******************************************************************************
-*******************************************************************************/
+/// *
+/// *****************************************************************************
+/// ****************************************************************************
 use annealing::solver::Solver;
 use annealing::problem::Problem;
 use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
@@ -31,7 +31,7 @@ use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
 
 use time;
-use CoolingSchedule; 
+use CoolingSchedule;
 use EnergyType;
 use hwloc;
 use pbr;
@@ -39,36 +39,33 @@ use rand;
 use libc;
 use num_cpus;
 
-use rand::{Rng,thread_rng};
+use rand::{Rng, thread_rng};
 use rand::distributions::{Range, IndependentSample};
 use ansi_term::Colour::Green;
 use std::collections::HashMap;
-use pbr::{ProgressBar,MultiBar};
+use pbr::{ProgressBar, MultiBar};
 
 
 #[derive(Debug, Clone)]
 pub struct Seqsea {
-	pub min_temp: f64,
-	pub max_temp: f64,		
+    pub min_temp: f64,
+    pub max_temp: f64,
     pub max_steps: usize,
     pub cooling_schedule: CoolingSchedule,
     pub energy_type: EnergyType,
 }
 
 impl Solver for Seqsea {
+    fn solve(&mut self, problem: &mut Problem) -> MrResult {
 
-    
-    fn solve(&mut self, problem: &mut Problem)
-                        -> MrResult {
-                        
-        	        	
-    	let cooler=StepsCooler {
-                      max_steps: self.max_steps,
-                      min_temp: self.min_temp,
-                      max_temp: self.max_temp,
-                      };
-    	
-       	let mut results_emitter = Emitter2File::new();
+
+        let cooler = StepsCooler {
+            max_steps: self.max_steps,
+            min_temp: self.min_temp,
+            max_temp: self.max_temp,
+        };
+
+        let mut results_emitter = Emitter2File::new();
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 
@@ -80,13 +77,13 @@ impl Solver for Seqsea {
         let mut start_time = time::precise_time_ns();
 
         let mut state = problem.initial_state();
-        let mut energy = match problem.energy(&state, self.energy_type.clone(),0) {
+        let mut energy = match problem.energy(&state, self.energy_type.clone(), 0) {
             Some(nrg) => nrg,
             None => panic!("The initial configuration does not allow to calculate the energy"),
         };
 
         let mut exec_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
-		let mut elapsed_time=0.0;
+        let mut elapsed_time = 0.0;
         let mut temperature: f64 = self.max_temp;
         let mut attempted = 0;
         let mut accepted = 0;
@@ -102,7 +99,7 @@ impl Solver for Seqsea {
 
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
-			let time_2_complete_mins=exec_time*((self.max_steps-elapsed_steps) as f64) / 60.0;
+            let time_2_complete_mins = exec_time * ((self.max_steps - elapsed_steps) as f64) / 60.0;
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
             println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
                       time to Complete: {:.2} Mins",
@@ -125,7 +122,7 @@ impl Solver for Seqsea {
 
 
             state = {
-            	
+
                 let next_state = match problem.new_state(&state, self.max_steps, elapsed_steps) {
                     // There is a neighborhood available
                     Some(n_s) => n_s,
@@ -135,50 +132,51 @@ impl Solver for Seqsea {
                                  Green.paint("[TUNER]"));
                         break;
                     }
-                }; 
+                };
 
-                let accepted_state = match problem.energy(&next_state, self.clone().energy_type,0) {
-                    Some(new_energy) => {
-                        last_nrg = new_energy;
+                let accepted_state =
+                    match problem.energy(&next_state, self.clone().energy_type, 0) {
+                        Some(new_energy) => {
+                            last_nrg = new_energy;
 
-                        let de = match self.energy_type {
-                            EnergyType::throughput => new_energy - energy,
-                            EnergyType::latency => -(new_energy - energy), 
-                        };
+                            let de = match self.energy_type {
+                                EnergyType::throughput => new_energy - energy,
+                                EnergyType::latency => -(new_energy - energy), 
+                            };
 
-                        if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature).exp() {
-                            accepted += 1;
-                            energy = new_energy;
+                            if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature).exp() {
+                                accepted += 1;
+                                energy = new_energy;
 
-                            if de > 0.0 {
-                                total_improves = total_improves + 1;
-                                subsequent_improves = subsequent_improves + 1;
+                                if de > 0.0 {
+                                    total_improves = total_improves + 1;
+                                    subsequent_improves = subsequent_improves + 1;
+                                }
+
+                                results_emitter.send_update(new_energy,
+                                                            &next_state,
+                                                            energy,
+                                                            &next_state,
+                                                            elapsed_steps);
+                                next_state
+
+                            } else {
+                                subsequent_improves = 0;
+                                results_emitter.send_update(new_energy,
+                                                            &next_state,
+                                                            energy,
+                                                            &state,
+                                                            elapsed_steps);
+                                state
                             }
-
-                            results_emitter.send_update(new_energy,
-                                                &next_state,
-                                                energy,
-                                                &next_state,
-                                                elapsed_steps);
-                            next_state
-
-                        } else {
-                            subsequent_improves = 0;
-                            results_emitter.send_update(new_energy,
-                                                &next_state,
-                                                energy,
-                                                &state,
-                                                elapsed_steps);
+                        }
+                        None => {
+                            println!("{} The current configuration parameters cannot be \
+                                      evaluated. Skip!",
+                                     Green.paint("[TUNER]"));
                             state
                         }
-                    }
-                    None => {
-                        println!("{} The current configuration parameters cannot be evaluated. \
-                                  Skip!",
-                                 Green.paint("[TUNER]"));
-                        state
-                    }
-                };
+                    };
 
                 accepted_state
             };
@@ -188,13 +186,13 @@ impl Solver for Seqsea {
                 CoolingSchedule::linear => cooler.linear_cooling(elapsed_steps),
                 CoolingSchedule::exponential => cooler.exponential_cooling(elapsed_steps),
                 CoolingSchedule::basic_exp_cooling => cooler.basic_exp_cooling(temperature),
-            }; 
+            };
         }
-		
-		MrResult {
-                  energy: energy,
-                  state: state,
-                  }
-        
+
+        MrResult {
+            energy: energy,
+            state: state,
+        }
+
     }
 }

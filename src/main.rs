@@ -1,4 +1,4 @@
-
+ #![feature(stmt_expr_attributes)] 
 extern crate x86;
 extern crate perfcnt;
 extern crate rustc_serialize;
@@ -22,7 +22,7 @@ extern crate futures_cpupool;
 extern crate lazy_static;
 extern crate influent;
 
-use ansi_term::Colour::{Green,Yellow};
+use ansi_term::Colour::{Green, Yellow};
 use std::time::Duration;
 use std::collections::HashMap;
 use annealing::problem::Problem;
@@ -44,7 +44,7 @@ mod energy_eval;
 mod meter_proxy;
 mod results_emitter;
 
-type State = HashMap<String,usize>;
+type State = HashMap<String, usize>;
 
 
 #[derive(Debug, Clone,RustcDecodable)]
@@ -77,22 +77,35 @@ pub enum ExecutionType {
 
 
 
-//The Docopt usage string.
-const USAGE: &'static str = "
-Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] [--maxTemp=<maxTemperature>] [-mt] [--minTemp=<minTemperature>] [-e] --energy=<energy> [-c] --cooling=<cooling> --version=<version>
+// The Docopt usage string.
+const USAGE: &'static str =
+    "
+Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] \
+     --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] \
+     --numIter=<numIter> [-tp] [--maxTemp=<maxTemperature>] [-mt] [--minTemp=<minTemperature>] \
+     [-e] --energy=<energy> [-c] --cooling=<cooling> --version=<version>
 
 Options:
-    -t,    --targ=<args>     	Target Path.
-    --args2targ=<args>          Arguments for Target (Specify Host and Port!).
+    -t,    \
+     --targ=<args>     	Target Path.
+    --args2targ=<args>          Arguments for Target \
+     (Specify Host and Port!).
     -b,    --bench=<args>     	Benchmark Path.
-    --args2bench=<args>         Arguments for Benchmark
-    -ms,   --maxSteps=<args>    Max Steps of Annealing.
-    -ni,   --numIter=<args>     Number of Iterations for each stage of exploration
+    \
+     --args2bench=<args>         Arguments for Benchmark
+    -ms,   --maxSteps=<args>    Max \
+     Steps of Annealing.
+    -ni,   --numIter=<args>     Number of Iterations for each stage of \
+     exploration
     -tp,   --maxTemp=<args>     (Optional) Max Temperature.
-    -mt,   --minTemp=<args>     (Optional) Min Temperature.
-    -e,	   --energy=<args>      Energy to eval (latency or throughput)
-    -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
-    -v,	   --version=<args>     Type of solver to use (seqsea, spis, mips, prsa)
+    -mt,   \
+     --minTemp=<args>     (Optional) Min Temperature.
+    -e,	   --energy=<args>      Energy to \
+     eval (latency or throughput)
+    -c,    --cooling=<args>     Cooling Schedule (linear, \
+     exponential, basic_exp_cooling)
+    -v,	   --version=<args>     Type of solver to use \
+     (seqsea, spis, mips, prsa)
 ";
 
 
@@ -190,58 +203,61 @@ fn main() {
         CoolingSchedule::linear => CoolingSchedule::linear,
         CoolingSchedule::basic_exp_cooling => CoolingSchedule::basic_exp_cooling,
     };
-       
-
-	let (t_min,t_max) = eval_temperature(args.flag_minTemp, args.flag_maxTemp, energy_type.clone(), &mut problem);
 
 
+    let (t_min, t_max) = eval_temperature(args.flag_minTemp,
+                                          args.flag_maxTemp,
+                                          energy_type.clone(),
+                                          &mut problem);
 
-   	let mr_result: MrResult = match args.flag_version {
+
+
+    let mr_result: MrResult = match args.flag_version {
         SolverVersion::seqsea => {
-    			    let mut solver = annealing::solver::seqsea::Seqsea {
-    			    	min_temp: t_min,
-    			    	max_temp: t_max,
-				        max_steps: args.flag_maxSteps,
-				        energy_type: energy_type,
-				        cooling_schedule: cooling_schedule.clone(),
-				    };
-    			    
-        			solver.solve(&mut problem)
-        			},
+            let mut solver = annealing::solver::seqsea::Seqsea {
+                min_temp: t_min,
+                max_temp: t_max,
+                max_steps: args.flag_maxSteps,
+                energy_type: energy_type,
+                cooling_schedule: cooling_schedule.clone(),
+            };
+
+            solver.solve(&mut problem)
+        }
         SolverVersion::spis => {
-    			    let mut solver = annealing::solver::spis::Spis {
-    			    	min_temp: t_min,
-    			    	max_temp: t_max,
-				        max_steps: args.flag_maxSteps,
-				        energy_type: energy_type,
-				        cooling_schedule: cooling_schedule.clone(),
-				    };
-    			    
-        			solver.solve(&mut problem)
-        			},
+            let mut solver = annealing::solver::spis::Spis {
+                min_temp: t_min,
+                max_temp: t_max,
+                max_steps: args.flag_maxSteps,
+                energy_type: energy_type,
+                cooling_schedule: cooling_schedule.clone(),
+            };
+
+            solver.solve(&mut problem)
+        }
         SolverVersion::mips => {
-    			    let mut solver = annealing::solver::mips::Mips {
-    			    	min_temp: t_min,
-    			    	max_temp: t_max,
-				        max_steps: args.flag_maxSteps,
-				        energy_type: energy_type,
-				        cooling_schedule: cooling_schedule.clone(),
-				    };
-    			    
-        			solver.solve(&mut problem)
-        			},
+            let mut solver = annealing::solver::mips::Mips {
+                min_temp: t_min,
+                max_temp: t_max,
+                max_steps: args.flag_maxSteps,
+                energy_type: energy_type,
+                cooling_schedule: cooling_schedule.clone(),
+            };
+
+            solver.solve(&mut problem)
+        }
         SolverVersion::prsa => {
-    			    let mut solver = annealing::solver::prsa::Prsa {
-    			    	min_temp: t_min,
-    			    	max_temp: t_max,
-				        max_steps: args.flag_maxSteps,
-				        population_size: 10,
-				        energy_type: energy_type,
-				        cooling_schedule: cooling_schedule.clone(),
-				    };
-    			    
-        			solver.solve(&mut problem)
-        			},
+            let mut solver = annealing::solver::prsa::Prsa {
+                min_temp: t_min,
+                max_temp: t_max,
+                max_steps: args.flag_maxSteps,
+                population_size: 10,
+                energy_type: energy_type,
+                cooling_schedule: cooling_schedule.clone(),
+            };
+
+            solver.solve(&mut problem)
+        }
     };
 
     println!("{}",Yellow.paint("\n-----------------------------------------------------------------------------------------------------------------------------------------------"));
@@ -256,48 +272,53 @@ fn main() {
 
 
 /// Check if the temperature is given by the user or if Tmin and Tmax need to be evaluated
-fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, nrg_type: EnergyType, problem: &mut Problem) -> (f64,f64) {
-	let num_exec=20;
-	let ngr_type_c=nrg_type.clone();
-	
-	let min_temp=match t_min {
-		Some(val) => val,
-		None => 1.0,
-	};
-		
-	let max_temp=match t_max {
-		Some(val) => val,
-		None => {
-			let mut energies = Vec::with_capacity(num_exec);
-		    /// Search for Tmax: a temperature that gives 98% acceptance
-			/// Tmin: equal to 1.	
+fn eval_temperature(t_min: Option<f64>,
+                    t_max: Option<f64>,
+                    nrg_type: EnergyType,
+                    problem: &mut Problem)
+                    -> (f64, f64) {
+    let num_exec = 20;
+    let ngr_type_c = nrg_type.clone();
+
+    let min_temp = match t_min {
+        Some(val) => val,
+        None => 1.0,
+    };
+
+    let max_temp = match t_max {
+        Some(val) => val,
+        None => {
+            let mut energies = Vec::with_capacity(num_exec);
+            /// Search for Tmax: a temperature that gives 98% acceptance
+            /// Tmin: equal to 1.
             println!("{} Temperature not provided. Starting its Evaluation",
                      Green.paint("[TUNER]"));
-			let mut state = problem.initial_state();
-	        match problem.energy(&state, nrg_type.clone(), 0) {
-	            Some(nrg) => energies.push(nrg),
-	            None => panic!("The initial configuration does not allow to calculate the energy"),
-	        };
-	        
-         	for i in 0..num_exec{
-		        
-		        let next_state = problem.rand_state();
-	         	match problem.energy(&next_state, ngr_type_c, 0) {
+            let mut state = problem.initial_state();
+            match problem.energy(&state, nrg_type.clone(), 0) {
+                Some(nrg) => energies.push(nrg),
+                None => panic!("The initial configuration does not allow to calculate the energy"),
+            };
+
+            for i in 0..num_exec {
+
+                let next_state = problem.rand_state();
+                match problem.energy(&next_state, ngr_type_c, 0) {
                     Some(new_energy) => {
-           		        energies.push(new_energy);	
-                    },
+                        energies.push(new_energy);
+                    }
                     None => {
                         println!("{} The current configuration parameters cannot be evaluated. \
                                   Skip!",
                                  Green.paint("[TUNER]"));
-		                    },
-	                };
-		         }  
-             	 	
-             	let desired_prob: f64=0.98; 	
-             	(energies.iter().cloned().fold(0./0., f64::max) - energies.iter().cloned().fold(0./0., f64::min))/desired_prob.ln()
- 			},
-		};
-		
-		return (min_temp,max_temp);
-	}
+                    }
+                };
+            }
+
+            let desired_prob: f64 = 0.98;
+            (energies.iter().cloned().fold(0. / 0., f64::max) -
+             energies.iter().cloned().fold(0. / 0., f64::min)) / desired_prob.ln()
+        }
+    };
+
+    return (min_temp, max_temp);
+}

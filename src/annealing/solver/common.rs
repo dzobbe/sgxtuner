@@ -33,12 +33,12 @@ pub struct MrResult {
     pub state: State,
 }
 
-//Get the number of physical cpu cores
+// Get the number of physical cpu cores
 pub fn get_num_cores() -> usize {
-	let cpu_topology = Arc::new(Mutex::new(Topology::new()));
-	let topo_rc = cpu_topology.clone();
+    let cpu_topology = Arc::new(Mutex::new(Topology::new()));
+    let topo_rc = cpu_topology.clone();
     let topo_locked = topo_rc.lock().unwrap();
-	return (*topo_locked).objects_with_type(&ObjectType::Core).unwrap().len();
+    return (*topo_locked).objects_with_type(&ObjectType::Core).unwrap().len();
 }
 
 #[derive(Debug, Clone)]
@@ -160,7 +160,7 @@ impl SubsequentRejStates {
         *rejected
     }
 
-    pub fn reset(&self) { 
+    pub fn reset(&self) {
         let mut rejected = self.0.lock().unwrap();
         *rejected = 0;
     }
