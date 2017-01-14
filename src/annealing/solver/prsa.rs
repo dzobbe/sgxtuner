@@ -1,5 +1,5 @@
 /// ///////////////////////////////////////////////////////////////////////////
-///  File: Annealing/Solver/PRSA.rs
+///  File: annealing/solver/prsa.rs
 /// ///////////////////////////////////////////////////////////////////////////
 ///  Copyright 2017 Giovanni Mazzeo
 ///
@@ -74,20 +74,28 @@ impl Solver for Prsa {
         let num_cores = common::get_num_cores();
 
         // Generate a Population of specified size with different configurations randomly selected
-        // from the space state
+        // from the space state 
         let mut population = common::StatesPool::new_with_val(problem.get_population(self.population_size));
+            println!("Pop: ");
+
 
         let mut elapsed_steps = common::ElapsedSteps::new();
+        let mut temperature = common::Temperature::new(self.max_temp,cooler.clone(),self.cooling_schedule.clone());
+		let threads_res=common::ThreadsResults::new();
 
         let mut mb = MultiBar::new();
         /// *********************************************************************************************************
         let mut start_time = time::precise_time_ns();
+        let mut final_best_res= MrResult {
+				            energy: 0.0,
+				            state: HashMap::new(),
+				        };
         'outer: loop {
-
+ 
             if elapsed_steps.get() > self.max_steps {
                 break 'outer;
             }
-
+ 
             let elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
@@ -126,6 +134,9 @@ impl Solver for Prsa {
 
             for core in 0..num_cores {
 
+                let sub_population = chunks[core].clone();
+
+
                 let mut problem_c = problem.clone();
                 let elapsed_steps_c = elapsed_steps.clone();
 
@@ -134,20 +145,24 @@ impl Solver for Prsa {
                 let cooling_sched = self.clone().cooling_schedule;
                 let cooler_c = cooler.clone();
 				let population_c=population.clone();
-                let sub_population = chunks[core].clone();
-                let mut temperature = self.max_temp;
+                let temperature_c = temperature.clone();
                 let sub_population_c = sub_population.clone();
-                
+				let threads_res_c=threads_res.clone();
+                let len_subpop = sub_population_c.len();
+
+
+
+                let mut pb = mb.create_bar((len_subpop/2) as u64);
 
                 /// *********************************************************************************************************
                 th_handlers.push(thread::spawn(move || {
-                    let len_subpop = sub_population_c.len();
-	                let mut pb = mb.create_bar((len_subpop/2) as u64);
                     pb.show_message = true;
                     
                     let mut new_sub_population: Vec<State> = Vec::with_capacity(len_subpop);
-
+			
                     let mut rng = rand::thread_rng();
+                    let mut results: Vec<common::MrResult> = Vec::new();
+                    
                     for step in 0..len_subpop / 2 {
                         pb.message(&format!("TID [{}] - Sub-Population Exploration Status - ",
                                             core));
@@ -175,12 +190,14 @@ impl Solver for Prsa {
                             EnergyType::latency => -(cost_parent_1 - cost_child_2), 
                         };
 
-                        if range.ind_sample(&mut rng) <
-                           1.0 / (1.0 + (de_p1_c2 / temperature).exp()) {
-                            new_sub_population.push(parent_1);
-                        } else {
-                            new_sub_population.push(child_2);
-                        }
+                        let (best_state_1,best_cost_1)={
+	                        if range.ind_sample(&mut rng) <
+	                           1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp()) {
+	                            (parent_1,cost_parent_1)
+	                        } else {
+	                            (child_2,cost_child_2)
+	                        }
+                        };
 
 
 
@@ -190,25 +207,48 @@ impl Solver for Prsa {
                             EnergyType::latency => -(cost_parent_2 - cost_child_1), 
                         };
 
-                        if range.ind_sample(&mut rng) <
-                           1.0 / (1.0 + (de_p2_c1 / temperature).exp()) {
-                            new_sub_population.push(parent_2);
-                        } else {
-                            new_sub_population.push(child_1);
-                        }
+                        let (best_state_2,best_cost_2)={
+	                        if range.ind_sample(&mut rng) <
+	                           1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp()) {
+	                            (parent_2,cost_parent_2)
+	                        } else {
+	                            (child_1,cost_child_1)
+	                        }
+						};
+	                           
+                       new_sub_population.push(best_state_1.clone());
+                       new_sub_population.push(best_state_2.clone());
 
 
-                        pb.inc();
-    					elapsed_steps_c.increment();
-    					
-                        temperature = match cooling_sched {
-                            CoolingSchedule::linear => cooler_c.linear_cooling(step),
-                            CoolingSchedule::exponential => cooler_c.exponential_cooling(step),
-                            CoolingSchedule::basic_exp_cooling => cooler_c.basic_exp_cooling(temperature),
+						let (iter_best_state, iter_best_cost)=match nrg_type {
+                            EnergyType::throughput => {
+                            	if best_cost_1 > best_cost_2{
+                            		(best_state_1,best_cost_1)
+                            	}else{
+                            		(best_state_2,best_cost_2)
+                            	}
+                            },
+                            EnergyType::latency => {
+                            	if best_cost_1 > best_cost_2{
+                            		(best_state_2,best_cost_2)
+                            	}else{
+                            		(best_state_1,best_cost_1)
+                            	}
+                        	}, 
                         };
+						
+					    results.push(common::MrResult{
+			            	energy: iter_best_cost,
+			            	state: iter_best_state});   
+                        pb.inc();
+                        temperature_c.update(elapsed_steps_c.get());
+    					elapsed_steps_c.increment();
                         
                     }
-
+                   	
+                   	let chunk_best_res=eval_best_res(&mut results, nrg_type);
+                   	threads_res_c.push(chunk_best_res);
+                  
                     pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
 
                     population_c.push_bulk(&mut new_sub_population);
@@ -221,14 +261,46 @@ impl Solver for Prsa {
             for h in th_handlers {
                 h.join().unwrap();
             }
+            
+            let final_best_res=eval_best_res(&mut threads_res.get_coll(),self.energy_type);
+
+            
+            /************************************************************************************************************/	
+	        
         }
 
 
-        MrResult {
-            energy: 9.8,
-            state: master_state,
-        }
+        final_best_res
     }
+}
+
+fn eval_best_res(workers_res: &mut Vec<MrResult>, nrg_type: EnergyType) -> MrResult{
+	//Get results of worker threads (each one will put its best evaluated energy) and 
+    //choose between them which one will be the best
+   	let first_elem = workers_res.pop().unwrap();
+   	
+   	let mut best_state = first_elem.state;
+   	let mut best_cost = first_elem.energy;
+   	
+   	for elem in workers_res.iter() {
+   		let diff=match nrg_type {
+                EnergyType::throughput => {
+                	 elem.energy-best_cost
+                },
+                EnergyType::latency => {
+                	-(elem.energy-best_cost)
+                } 
+            };
+   		if diff > 0.0 {
+   			best_cost=elem.clone().energy;
+   			best_state=elem.clone().state;
+   		}
+   	}
+   	
+   	MrResult {
+            energy: best_cost,
+            state: best_state,
+        }
 }
 
 

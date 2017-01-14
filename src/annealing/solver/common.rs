@@ -149,7 +149,7 @@ impl ElapsedSteps {
         *steps
     }
     pub fn add(&self, val: usize) {
-        let steps = self.0.lock().unwrap();
+        let mut steps = self.0.lock().unwrap();
         *steps=*steps + val;
     }
 }

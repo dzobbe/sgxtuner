@@ -144,10 +144,7 @@ fn main() {
     /// that the simulated annealing algorithm will explore. ParamsConfigurator set initial default parameters
     /// defined in the initial-params.txt input file
     ///
-    let params_config = states_gen::ParamsConfigurator {
-        param_file_path: "params.conf".to_string(),
-        ..states_gen::ParamsConfigurator::default()
-    };
+    let params_config = states_gen::ParamsConfigurator::new("params.conf".to_string());
 
 
 
@@ -239,7 +236,7 @@ fn main() {
                 min_temp: t_min,
                 max_temp: t_max,
                 max_steps: args.flag_maxSteps,
-                population_size: 10,
+                population_size: 50,
                 energy_type: energy_type,
                 cooling_schedule: cooling_schedule.clone(),
             };

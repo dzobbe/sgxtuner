@@ -1,5 +1,5 @@
 /// ///////////////////////////////////////////////////////////////////////////
-///  File: Annealing/Solver/SPIS.rs
+///  File: annealing/solver/spis.rs
 /// ///////////////////////////////////////////////////////////////////////////
 ///  Copyright 2017 Giovanni Mazzeo
 ///
@@ -254,7 +254,7 @@ impl Solver for Spis {
 		        
 				/************************************************************************************************************/	
 		        //Get results of worker threads (each one will put its best evaluated energy) and 
-		        //choose between them which one will be the best one.
+		        //choose between them which one will be the best
 		        let mut workers_res = threads_res.get_coll();
 		       	let first_elem = workers_res.pop().unwrap();
 		       	
