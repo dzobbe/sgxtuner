@@ -28,6 +28,7 @@ use annealing::problem::Problem;
 use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
 use annealing::solver::common;
 use annealing::solver::common::MrResult;
+use annealing::solver::common::IntermediateResults;
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
 
@@ -46,6 +47,7 @@ use ansi_term::Colour::Green;
 use std::collections::HashMap;
 use pbr::{ProgressBar,MultiBar};
 use std::thread;
+use std::sync::mpsc::channel;
 
 
 #[derive(Debug, Clone)]
@@ -68,7 +70,6 @@ impl Solver for Spis {
                       max_temp: self.max_temp,
                       };
     	                	
-        let mut results_emitter = Emitter2File::new();
 
         ("{}",Green.paint("\n-------------------------------------------------------------------------------------------------------------------"));
         println!("{} Initialization Phase: Evaluation of Energy for Default Parameters",
@@ -89,18 +90,17 @@ impl Solver for Spis {
         
 		let mut elapsed_steps = common::ElapsedSteps::new();
 		let mut accepted = common::AcceptedStates::new();
-        let mut rejected = common::SubsequentRejStates::new();
+        let mut subsequent_accepted = common::SubsequentAccStates::new();
+		
 		let mut temperature = common::Temperature::new(self.max_temp, cooler, self.clone().cooling_schedule);
 		
-        let mut attempted = 0;
-        let mut total_improves = 0;
-        let mut subsequent_improves = 0;
+        
 
  		/************************************************************************************************************/
         start_time = time::precise_time_ns();
         'outer: loop {
         	
-        		if elapsed_steps.get() > self.max_steps{
+        		if elapsed_steps.get() > self.max_steps || subsequent_accepted.get() > 100 {
         			break 'outer;
         		}
 	        	elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
@@ -112,10 +112,11 @@ impl Solver for Spis {
 	                     elapsed_steps.get(),
 	                     (elapsed_steps.get() as f64 / self.max_steps as f64) * 100.0,
 	                     time_2_complete_hrs as usize);
-	            println!("{} Total Accepted Solutions: {:?} - Current Temperature: {:.2} - Elapsed \
+	            println!("{} Total Accepted: {:?} - Subsequent Accepted: {:?} - Current Temperature: {:.2} - Elapsed \
 	                      Time: {:.2} s",
 	                     Green.paint("[TUNER]"),
 	                     accepted.get(),
+ 	                     subsequent_accepted.get(),
 	                     temperature.get(),
 	                     elapsed_time);
 	            println!("{} Accepted State: {:?}", Green.paint("[TUNER]"), master_state);
@@ -130,13 +131,15 @@ impl Solver for Spis {
 				let neigh_pool=common::NeighborhoodsPool::new(neigh_space);
 				
 				let threads_res=common::ThreadsResults::new();
-				
-				
 		    	
  				let mut mb = MultiBar::new();
  
  				//Get the number of physical cpu cores
 			 	let num_cores = common::get_num_cores();	
+			 	
+ 				//Channel for receiving results from worker threads and send them to the file writer.
+				let (tx, rx) = channel::<IntermediateResults>();
+				
  				/************************************************************************************************************/
 	 			let handles: Vec<_> = (0..num_cores).map(|core| {
 	 				let mut pb=mb.create_bar(neigh_pool.size()/num_cores as u64);
@@ -145,26 +148,31 @@ impl Solver for Spis {
 					let (mut master_state_c, mut problem_c) = (master_state.clone(), problem.clone());
 	            	let (elapsed_steps_c, temperature_c,
 	            		 neigh_pool_c, accepted_c,
-	            		 rejected_c,threads_res_c) = (elapsed_steps.clone(),
+	            		 subsequent_accepted_c,threads_res_c) = (elapsed_steps.clone(),
 	            		 							  temperature.clone(),
 	            		 							  neigh_pool.clone(), 
 	            		 							  accepted.clone(), 
-	            		 							  rejected.clone(),
+	            		 							  subsequent_accepted.clone(),
 	            		 							  threads_res.clone());
 
 					let nrg_type = self.clone().energy_type;
+					
+					let tx_c=tx.clone();
 					
 					
 					/************************************************************************************************************/
 		            thread::spawn(move || {
 
-							let mut worker_nrg=master_energy;
-							let mut worker_state=master_state_c;
+							let mut worker_nrg=master_energy.clone();
+							let mut worker_state=master_state_c.clone();
   					        let range = Range::new(0.0, 1.0);
 		  					let mut rng = thread_rng();
-
-
+ 							
+							let mut last_nrg=master_energy.clone();
+							let mut last_state=master_state_c.clone();
 				            loop{
+				            	
+				            	
 				            	pb.message(&format!("TID [{}] - Neigh. Exploration Status - ", core));
 
 				            	worker_state = {
@@ -173,11 +181,13 @@ impl Solver for Spis {
 							            		Some(res) => res,
 							            		None 	  => break,
 						            	};
-
+										
+										last_state=next_state.clone();
+									
 										let accepted_state = match problem_c.energy(&next_state.clone(), nrg_type.clone(), core) {
 						                    Some(new_energy) => {
 						            			println!("Thread : {:?} - Step: {:?} - State: {:?} - Energy: {:?}",core, elapsed_steps_c.get(),next_state,new_energy);
-
+												last_nrg=new_energy;
 						                        let de = match nrg_type {
 						                            EnergyType::throughput => new_energy - worker_nrg,
 						                            EnergyType::latency => -(new_energy - worker_nrg), 
@@ -185,35 +195,19 @@ impl Solver for Spis {
 						
 						                        if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature_c.get()).exp() {
 						                            accepted_c.increment();
-						                        	rejected_c.reset();
 						                        	
 						                            worker_nrg = new_energy;
 						
-						                           /* if de > 0.0 {
-						                                total_improves = total_improves + 1;
-						                                subsequent_improves = subsequent_improves + 1;
-						                            }*/
+						                            if de > 0.0 {
+														subsequent_accepted_c.increment();
+						                            }
 						 
-						                            /*results_emitter.send_update(new_energy,
-						                                                &next_state,
-						                                                energy,
-						                                                &next_state,
-						                                                elapsed_steps_c.get());*/
+						                          
 						                            next_state
 						
 						                        } else {
-						                        	rejected_c.increment();
-						                        	
-						                        	if rejected_c.get()==50{
-						                        		break;
-						                        	} 
-						                        		
-						                           // subsequent_improves = 0;
-						                            /*results_emitter.send_update(new_energy,
-						                                                &next_state,
-						                                                energy,
-						                                                &state,
-						                                                elapsed_steps_c.get());*/
+													subsequent_accepted_c.reset();					                        	
+							                           
 						                            worker_state
 						                        }
 						                    }
@@ -227,7 +221,16 @@ impl Solver for Spis {
 						                
 						                accepted_state
 						            };
-				            	
+                                                            
+				            	   let intermediate_res=IntermediateResults{
+				            			last_nrg: last_nrg,
+				            			last_state:last_state.clone(),
+				            			best_nrg: worker_nrg,
+				            			best_state: worker_state.clone(),
+				            		};
+				            		
+				            		tx_c.send(intermediate_res);
+				            		
 					            	elapsed_steps_c.increment();
  									pb.inc();	            	
 									temperature_c.update(elapsed_steps_c.get());	
@@ -237,6 +240,7 @@ impl Solver for Spis {
 				            	energy: worker_nrg,
 				            	state: worker_state,
 				            };
+				            
 
 				            threads_res_c.push(res);	
     		            	pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
@@ -245,7 +249,29 @@ impl Solver for Spis {
 
 		        }).collect();
 				
+				
+				let (elapsed_steps_c, temperature_c) = (elapsed_steps.clone(),temperature.clone());
+	            thread::spawn(move || {
+    		        let mut results_emitter = Emitter2File::new();
+            		loop{
+		        	   elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+				 	   match rx.recv(){
+					 	   	Ok(res) =>{
+								results_emitter.send_update(temperature_c.get(),
+                                							elapsed_time,
+                                							res.last_nrg,
+                                                            &res.last_state, 
+                                                            res.best_nrg,
+                                                            &res.best_state,
+                                                            elapsed_steps_c.get());
+					 	   	},
+					 	   	Err(e) => {;}
+				 	   }
+            		}
+            	});  
+		 	
 				mb.listen(); 
+
 		        // Wait for all threads to complete before start a search in a new set of neighborhoods.
 		        for h in handles {
 		            h.join().unwrap();

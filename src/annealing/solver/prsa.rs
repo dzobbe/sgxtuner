@@ -76,7 +76,6 @@ impl Solver for Prsa {
         // Generate a Population of specified size with different configurations randomly selected
         // from the space state 
         let mut population = common::StatesPool::new_with_val(problem.get_population(self.population_size));
-            println!("Pop: ");
 
 
         let mut elapsed_steps = common::ElapsedSteps::new();
@@ -113,8 +112,6 @@ impl Solver for Prsa {
 			
             let mut th_handlers: Vec<JoinHandle<_>> = Vec::with_capacity(num_cores);
 
-            println!("Pop: {:?}", population);
-
             // Divide the population in num_cores chunks
             let chunk_size = (self.population_size as f64 / num_cores as f64).floor() as usize;
             let mut chunks: Vec<Vec<State>> =
@@ -130,9 +127,8 @@ impl Solver for Prsa {
                 }
             }
 			
-			println!("SS {}",population.size());
-
-            for core in 0..num_cores {
+ 
+            for core in 0..num_cores  {
 
                 let sub_population = chunks[core].clone();
 
@@ -169,14 +165,15 @@ impl Solver for Prsa {
 
                         let (parent_1, parent_2) = get_parents(&mut sub_population_c.to_vec());
 
-                        let cost_parent_1 = problem_c.energy(&parent_1, nrg_type.clone(), core)
-                            .unwrap();
+                        let cost_parent_1 = problem_c.energy(&parent_1, nrg_type.clone(), core).unwrap();
+                        	
+                        	
                         let cost_parent_2 = problem_c.energy(&parent_2, nrg_type.clone(), core)
                             .unwrap();
 
                         let (mut child_1, mut child_2) =
                             generate_children(&mut problem_c, &parent_1, &parent_2);
-
+ 
                         let cost_child_1 = problem_c.energy(&child_1, nrg_type.clone(), core)
                             .unwrap();
                         let cost_child_2 = problem_c.energy(&child_2, nrg_type.clone(), core)
@@ -317,29 +314,30 @@ fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State) 
     // Enforce Crossover between parent_1 and parent_2 configurations
     let cutting_point = ((0.4 * parent_1.len() as f64).floor()) as usize;
 
-    let mut child_1 = HashMap::new();
-    let mut child_2 = HashMap::new();
+    let mut child_1 = HashMap::with_capacity(parent_1.len());
+    let mut child_2 = HashMap::with_capacity(parent_1.len());
 
     let mut p1_iter = parent_1.iter();
-    let mut p2_iter = parent_2.iter();
-    let (iters_size, _) = p1_iter.size_hint();
 
-    for i in 0..iters_size {
+    for i in 0..parent_1.len() {
         let (mut key_p1, mut val_p1) = p1_iter.next().unwrap();
-        let (mut key_p2, mut val_p2) = p2_iter.next().unwrap();
+        let mut key_p2=key_p1;
+        let mut val_p2 = parent_2.get(key_p2).unwrap();
+
 
         if i < cutting_point {
             child_1.insert(key_p1.clone(), val_p1.clone());
             child_2.insert(key_p2.clone(), val_p2.clone());
-        } else {
+        } else { 
             child_1.insert(key_p2.clone(), val_p2.clone());
             child_2.insert(key_p1.clone(), val_p1.clone());
-        }
-    }
+        } 
+    }  
 
+	println!("Ress  {:?} - {:?}", child_1,child_2);
     // Enforce Uniform Mutation on Child_1: This operator replaces the value of the chosen "gene" (configuration parameter) with a
     // uniform random value selected between the upper and lower bounds for that gene (into the space state of the configuration parameter).
-    let mut keys: Vec<_> = child_1.keys()
+    let mut keys: Vec<_> = child_1.keys() 
         .map(|arg| arg.clone())
         .collect();
 

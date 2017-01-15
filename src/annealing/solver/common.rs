@@ -33,6 +33,14 @@ pub struct MrResult {
     pub state: State,
 }
 
+#[derive(Debug, Clone)]
+pub struct IntermediateResults{
+	pub last_nrg: f64,
+	pub last_state: State,
+	pub best_nrg: f64,
+	pub best_state: State,
+}
+
 // Get the number of physical cpu cores
 pub fn get_num_cores() -> usize {
     let cpu_topology = Arc::new(Mutex::new(Topology::new()));
@@ -54,7 +62,7 @@ pub struct ElapsedSteps(Arc<Mutex<usize>>);
 pub struct AcceptedStates(Arc<Mutex<usize>>);
 
 #[derive(Debug, Clone)]
-pub struct SubsequentRejStates(Arc<Mutex<usize>>);
+pub struct SubsequentAccStates(Arc<Mutex<usize>>);
 
 #[derive(Debug, Clone)]
 pub struct Temperature {
@@ -170,11 +178,11 @@ impl AcceptedStates {
 }
 /// *********************************************************************************************************
 
-impl SubsequentRejStates {
+impl SubsequentAccStates {
     pub fn new() -> Self {
-        SubsequentRejStates(Arc::new(Mutex::new(0)))
+        SubsequentAccStates(Arc::new(Mutex::new(0)))
     }
-    pub fn increment(&self) {
+    pub fn increment(&self) { 
         let mut rejected = self.0.lock().unwrap();
         *rejected = *rejected + 1;
     }

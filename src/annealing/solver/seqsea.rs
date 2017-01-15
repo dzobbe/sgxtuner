@@ -107,9 +107,10 @@ impl Solver for Seqsea {
                      elapsed_steps,
                      (elapsed_steps as f64 / cooler.max_steps as f64) * 100.0,
                      time_2_complete_mins as usize);
-            println!("{} Total Accepted Solutions: {:?} - Current Temperature: {:.2} - Elapsed \
+            println!("{} Total Accepted Solutions: {:?} - Subsequent Improves: {:?} - Current Temperature: {:.2} - Elapsed \
                       Time: {:.2} s",
                      Green.paint("[TUNER]"),
+                     subsequent_improves,
                      accepted,
                      temperature,
                      elapsed_time);
@@ -143,6 +144,12 @@ impl Solver for Seqsea {
                                 EnergyType::throughput => new_energy - energy,
                                 EnergyType::latency => -(new_energy - energy), 
                             };
+                         	
+                         	if subsequent_improves > 100 {
+                        		println!("{} Convergence Reached!!!",
+                                     Green.paint("[TUNER]"));
+                            	break;
+                            }
 
                             if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature).exp() {
                                 accepted += 1;
@@ -153,7 +160,9 @@ impl Solver for Seqsea {
                                     subsequent_improves = subsequent_improves + 1;
                                 }
 
-                                results_emitter.send_update(new_energy,
+                                results_emitter.send_update(temperature,
+                                							elapsed_time,
+                                							new_energy,
                                                             &next_state,
                                                             energy,
                                                             &next_state,
@@ -162,13 +171,17 @@ impl Solver for Seqsea {
 
                             } else {
                                 subsequent_improves = 0;
-                                results_emitter.send_update(new_energy,
+                                results_emitter.send_update(temperature,
+                                							elapsed_time,
+                                							new_energy,
                                                             &next_state,
                                                             energy,
                                                             &state,
                                                             elapsed_steps);
                                 state
                             }
+                         	
+
                         }
                         None => {
                             println!("{} The current configuration parameters cannot be \
