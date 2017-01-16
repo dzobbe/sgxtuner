@@ -30,6 +30,7 @@ use annealing::solver::common;
 use annealing::solver::common::MrResult;
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
+use annealing::solver::common::IntermediateResults;
 
 use time;
 use CoolingSchedule;
@@ -46,6 +47,7 @@ use ansi_term::Colour::Green;
 use std::collections::HashMap;
 use pbr::{ProgressBar, MultiBar};
 use std::thread;
+use std::sync::mpsc::channel;
 
 
 #[derive(Debug, Clone)]
@@ -93,6 +95,31 @@ impl Solver for Mips {
         let threads_res = common::ThreadsResults::new();
 
         let mut overall_start_time = time::precise_time_ns();
+        
+        let (tx, rx) = channel::<IntermediateResults>();
+ 		let mut results_emitter = Emitter2File::new();
+        //Spawn the thread that will take care of writing results into a CSV file
+        let elapsed_steps_c = elapsed_steps.clone();
+        thread::spawn(move || {
+    		loop{
+        	   let elapsed_time = (time::precise_time_ns() - overall_start_time) as f64 / 1000000000.0f64;
+		 	   match rx.recv(){
+			 	   	Ok(res) =>{
+						results_emitter.send_update(0.0,
+                        							elapsed_time,
+                        							res.last_nrg,
+                                                    &res.last_state, 
+                                                    res.best_nrg,
+                                                    &res.best_state,
+                                                    elapsed_steps_c.get());
+			 	   	},
+			 	   	Err(e) => {;} 
+		 	   }
+    		}
+    	});
+        
+        
+        
         let handles: Vec<_> = (0..num_cores).map(|core| {
  				
 				let mut pb=mb.create_bar((self.max_steps/num_cores) as u64);
@@ -113,6 +140,7 @@ impl Solver for Mips {
 				let max_temp=self.max_temp.clone();
 				let cooler_c=cooler.clone();
 				let is=initial_state.clone();
+				let tx_c=tx.clone();	
  	 			/************************************************************************************************************/
  				thread::spawn(move || {
 				 	
@@ -122,12 +150,13 @@ impl Solver for Mips {
 					let mut accepted = 0;
 			        let mut rejected = 0;
 					let mut temperature = max_temp;
-					let mut worker_elapsed_steps=0;		
-						
+					let mut worker_elapsed_steps=0;
+							
+					let mut rng = thread_rng();
         			let mut start_time = time::precise_time_ns(); 
         			
 					let mut worker_state=initial_states_pool_c.remove_one().unwrap();
-				 	let mut worker_nrg = match problem_c.energy(&worker_state.clone(), nrg_type.clone(), core) {
+				 	let mut worker_nrg = match problem_c.energy(&worker_state.clone(), nrg_type.clone(), core,rng.clone()) {
 			            Some(nrg) => nrg,
 			            None => panic!("The initial configuration does not allow to calculate the energy"),
 			        };
@@ -137,13 +166,12 @@ impl Solver for Mips {
         			let time_2_complete_hrs = ((elapsed_time as f64) * max_steps as f64) / 3600.0;
   					
   					let range = Range::new(0.0, 1.0);
-  					let mut rng = thread_rng();
-			 		
+  					
+	 				
 			 		
 			 		/************************************************************************************************************/			    	
 			    	
 					let threads_res=common::ThreadsResults::new();
- 
 
 		            loop{	            	
 
@@ -177,11 +205,12 @@ impl Solver for Mips {
 
 		            	pb.message(&format!("TID [{}] - Status - ", core));
 						pb.inc();
+						let mut last_state=worker_state.clone();
 		            	worker_state = {
         	
 				                let next_state = problem_c.new_state(&worker_state,max_steps,worker_elapsed_steps).unwrap();
 				                
-								let accepted_state = match problem_c.energy(&next_state.clone(), nrg_type.clone(), core) {
+								let accepted_state = match problem_c.energy(&next_state.clone(), nrg_type.clone(), core,rng.clone()) {
 				                    Some(new_energy) => {
             	                        last_nrg = new_energy;
 
@@ -203,11 +232,7 @@ impl Solver for Mips {
 				                                subsequent_improves = subsequent_improves + 1;
 				                            }
 				
-				                            /*results_emitter.send_update(new_energy,
-				                                                &next_state,
-				                                                energy,
-				                                                &next_state,
-				                                                elapsed_steps_c.get());*/
+				                           
 				                            next_state
 				
 				                        } else {
@@ -217,12 +242,6 @@ impl Solver for Mips {
 				                        		break;
 				                        	} 
 				                        		
-				                           // subsequent_improves = 0;
-				                            /*results_emitter.send_update(new_energy,
-				                                                &next_state,
-				                                                energy,
-				                                                &state,
-				                                                elapsed_steps_c.get());*/
 				                            worker_state
 				                        }
 				                    }
@@ -236,6 +255,16 @@ impl Solver for Mips {
 				                
 				                accepted_state
 				            };
+							
+							
+							let intermediate_res=IntermediateResults{
+				            			last_nrg: last_nrg,
+				            			last_state:last_state.clone(),
+				            			best_nrg: worker_nrg,
+				            			best_state: worker_state.clone(),
+				            		};
+		            		tx_c.send(intermediate_res);
+				            		
 							
 			            	worker_elapsed_steps+=1;
 			            	

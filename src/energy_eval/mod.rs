@@ -222,7 +222,7 @@ impl EnergyEval {
   
             
             let end_time = time::precise_time_ns();
-			
+			 
             let elapsed_ns: f64 = (end_time - start_time) as f64;
             let elapsed_time = elapsed_ns / 1000000000.0f64;
              

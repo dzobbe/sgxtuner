@@ -77,16 +77,19 @@ impl Solver for Spis {
         println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
         let mut start_time = time::precise_time_ns();
+        let mut rng = thread_rng();
 
         let mut master_state = problem.initial_state();
-        let mut master_energy = match problem.energy(&master_state.clone(), self.energy_type.clone(),0) {
+        let mut master_energy = match problem.energy(&master_state.clone(), self.energy_type.clone(),0,rng) {
             Some(nrg) => nrg,
             None => panic!("The initial configuration does not allow to calculate the energy"),
         };
 
         let mut elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
         let time_2_complete_hrs = ((elapsed_time as f64) * self.max_steps as f64) / 3600.0;
+        
 
+        
         
 		let mut elapsed_steps = common::ElapsedSteps::new();
 		let mut accepted = common::AcceptedStates::new();
@@ -94,6 +97,31 @@ impl Solver for Spis {
 		
 		let mut temperature = common::Temperature::new(self.max_temp, cooler, self.clone().cooling_schedule);
 		
+        
+ 		//Channel for receiving results from worker threads and send them to the file writer.
+		let (tx, rx) = channel::<IntermediateResults>();
+        let mut results_emitter = Emitter2File::new();
+        //Spawn the thread that will take care of writing results into a CSV file
+        let (elapsed_steps_c, temperature_c) = (elapsed_steps.clone(),temperature.clone());
+        thread::spawn(move || {
+    		loop{
+        	   elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+		 	   match rx.recv(){
+			 	   	Ok(res) =>{
+						results_emitter.send_update(temperature_c.get(),
+                        							elapsed_time,
+                        							res.last_nrg,
+                                                    &res.last_state, 
+                                                    res.best_nrg,
+                                                    &res.best_state,
+                                                    elapsed_steps_c.get());
+			 	   	},
+			 	   	Err(e) => {;} 
+		 	   }
+    		}
+    	});
+        
+        
         
 
  		/************************************************************************************************************/
@@ -137,8 +165,7 @@ impl Solver for Spis {
  				//Get the number of physical cpu cores
 			 	let num_cores = common::get_num_cores();	
 			 	
- 				//Channel for receiving results from worker threads and send them to the file writer.
-				let (tx, rx) = channel::<IntermediateResults>();
+
 				
  				/************************************************************************************************************/
 	 			let handles: Vec<_> = (0..num_cores).map(|core| {
@@ -184,7 +211,7 @@ impl Solver for Spis {
 										
 										last_state=next_state.clone();
 									
-										let accepted_state = match problem_c.energy(&next_state.clone(), nrg_type.clone(), core) {
+										let accepted_state = match problem_c.energy(&next_state.clone(), nrg_type.clone(), core,rng.clone()) {
 						                    Some(new_energy) => {
 						            			println!("Thread : {:?} - Step: {:?} - State: {:?} - Energy: {:?}",core, elapsed_steps_c.get(),next_state,new_energy);
 												last_nrg=new_energy;
@@ -248,27 +275,6 @@ impl Solver for Spis {
 		            })
 
 		        }).collect();
-				
-				
-				let (elapsed_steps_c, temperature_c) = (elapsed_steps.clone(),temperature.clone());
-	            thread::spawn(move || {
-    		        let mut results_emitter = Emitter2File::new();
-            		loop{
-		        	   elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
-				 	   match rx.recv(){
-					 	   	Ok(res) =>{
-								results_emitter.send_update(temperature_c.get(),
-                                							elapsed_time,
-                                							res.last_nrg,
-                                                            &res.last_state, 
-                                                            res.best_nrg,
-                                                            &res.best_state,
-                                                            elapsed_steps_c.get());
-					 	   	},
-					 	   	Err(e) => {;}
-				 	   }
-            		}
-            	});  
 		 	
 				mb.listen(); 
 

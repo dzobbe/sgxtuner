@@ -77,7 +77,7 @@ impl Solver for Seqsea {
         let mut start_time = time::precise_time_ns();
 
         let mut state = problem.initial_state();
-        let mut energy = match problem.energy(&state, self.energy_type.clone(), 0) {
+        let mut energy = match problem.energy(&state, self.energy_type.clone(), 0,rng.clone()) {
             Some(nrg) => nrg,
             None => panic!("The initial configuration does not allow to calculate the energy"),
         };
@@ -110,8 +110,8 @@ impl Solver for Seqsea {
             println!("{} Total Accepted Solutions: {:?} - Subsequent Improves: {:?} - Current Temperature: {:.2} - Elapsed \
                       Time: {:.2} s",
                      Green.paint("[TUNER]"),
-                     subsequent_improves,
                      accepted,
+                     subsequent_improves,
                      temperature,
                      elapsed_time);
             println!("{} Accepted State: {:?}", Green.paint("[TUNER]"), state);
@@ -136,7 +136,7 @@ impl Solver for Seqsea {
                 };
 
                 let accepted_state =
-                    match problem.energy(&next_state, self.clone().energy_type, 0) {
+                    match problem.energy(&next_state, self.clone().energy_type, 0,rng.clone()) {
                         Some(new_energy) => {
                             last_nrg = new_energy;
 

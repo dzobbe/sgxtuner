@@ -12,6 +12,8 @@ extern crate csv;
 extern crate hwloc;
 extern crate num_cpus;
 extern crate wait_timeout;
+//extern crate papi;
+
 #[macro_use]
 extern crate futures;
 #[macro_use]
@@ -36,6 +38,7 @@ use std::sync::RwLock;
 use docopt::Docopt;
 use std::process::Command;
 use std::thread;
+use rand::{Rng, thread_rng};
 
 mod perf_counters;
 mod states_gen;
@@ -46,6 +49,12 @@ mod results_emitter;
 
 type State = HashMap<String, usize>;
 
+#[derive(Debug, Clone,RustcDecodable)]
+pub enum ProblemType {
+    default,
+    rastr,
+    griew,
+}
 
 #[derive(Debug, Clone,RustcDecodable)]
 pub enum CoolingSchedule {
@@ -79,7 +88,7 @@ pub enum ExecutionType {
 
 //The Docopt usage string.
 const USAGE: &'static str = "
-Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] [--maxTemp=<maxTemperature>] [-mt] [--minTemp=<minTemperature>] [-e] --energy=<energy> [-c] --cooling=<cooling> --version=<version>
+Usage:   annealing-tuner [-t] --targ=<targetPath> --args2targ=<args> [-b] --bench=<benchmarkPath> --args2bench=<args> [-ms] --maxSteps=<maxSteps> [-ni] --numIter=<numIter> [-tp] [--maxTemp=<maxTemperature>] [-mt] [--minTemp=<minTemperature>] [-e] --energy=<energy> [-c] --cooling=<cooling> --problem=<problem> --version=<version>
 
 Options:
     -t,    --targ=<args>     	Target Path.
@@ -92,6 +101,7 @@ Options:
     -mt,   --minTemp=<args>     (Optional) Min Temperature.
     -e,	   --energy=<args>      Energy to eval (latency or throughput)
     -c,    --cooling=<args>     Cooling Schedule (linear, exponential, basic_exp_cooling)
+    -p,	   --problem=<args>     Type of problem to solve (default, rastr, griew)
     -v,	   --version=<args>     Type of solver to use (seqsea, spis, mips, prsa)
 ";
 
@@ -109,6 +119,7 @@ struct Args {
     flag_minTemp: Option<f64>,
     flag_energy: EnergyType,
     flag_cooling: CoolingSchedule,
+    flag_problem: ProblemType,
     flag_version: SolverVersion,
     flag_args2targ: String,
     flag_args2bench: String,
@@ -167,6 +178,7 @@ fn main() {
     /// Finally,the solver is started
     ///
     let mut problem = Problem {
+    	problem_type: args.flag_problem,
         params_configurator: params_config,
         energy_evaluator: energy_eval,
     };
@@ -197,7 +209,7 @@ fn main() {
 
 
 
-    let mr_result: MrResult = match args.flag_version {
+    let mr_result = match args.flag_version {
         SolverVersion::seqsea => {
             let mut solver = annealing::solver::seqsea::Seqsea {
                 min_temp: t_min,
@@ -270,6 +282,8 @@ fn eval_temperature(t_min: Option<f64>,
         None => 1.0,
     };
 
+	let mut rng = thread_rng();
+	
     let max_temp = match t_max {
         Some(val) => val,
         None => {
@@ -279,7 +293,7 @@ fn eval_temperature(t_min: Option<f64>,
             println!("{} Temperature not provided. Starting its Evaluation",
                      Green.paint("[TUNER]"));
             let mut state = problem.initial_state();
-            match problem.energy(&state, nrg_type.clone(), 0) {
+            match problem.energy(&state, nrg_type.clone(), 0,rng.clone()) {
                 Some(nrg) => energies.push(nrg),
                 None => panic!("The initial configuration does not allow to calculate the energy"),
             };
@@ -287,7 +301,7 @@ fn eval_temperature(t_min: Option<f64>,
             for i in 0..num_exec {
 
                 let next_state = problem.rand_state();
-                match problem.energy(&next_state, ngr_type_c, 0) {
+                match problem.energy(&next_state, ngr_type_c, 0,rng.clone()) {
                     Some(new_energy) => {
                         energies.push(new_energy);
                     }

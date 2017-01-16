@@ -63,7 +63,8 @@ impl ParamsConfigurator {
             Err(why) => panic!("couldn't open {}: {}", display, why.description()),
             Ok(file) => file,
         };
-
+		
+		
         let mut initial_params_state: State = HashMap::new();
         let file_reader = BufReader::new(&file);
         let mut index = 0;
@@ -93,7 +94,7 @@ impl ParamsConfigurator {
                         Some(x) => var_step = str::replace(x, "]", ""),
                         None => break,		                		
                     }
-                }
+                } 
                 None => break,
             }
 

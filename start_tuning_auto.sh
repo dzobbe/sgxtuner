@@ -5,4 +5,5 @@ target/debug/annealing-tuner --targ=/home/ubuntu/TUD-Work/scripts/build/build/bi
 --maxSteps=10000 --numIter=1 \
 --energy=throughput \
 --cooling=basic_exp_cooling \
---version=parallel_v2
+--problem=default \
+--version=seqsea

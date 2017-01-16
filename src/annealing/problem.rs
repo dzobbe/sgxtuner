@@ -19,11 +19,16 @@
 use states_gen;
 use energy_eval;
 use EnergyType;
+use ProblemType;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use rustc_serialize::Encodable;
 use State;
-
+use rand;
+use rand::{Rng, thread_rng};
+use std::f64::consts;
+use rand::distributions::Range;
+use rand::distributions::IndependentSample;
 /**
  * A problem represents something to be solved using simulated
  * annealing, and provides methods to calculate the energy of a
@@ -31,6 +36,7 @@ use State;
  */
 #[derive(Debug, Clone)]
 pub struct Problem {
+	pub problem_type: ProblemType,
     pub params_configurator: states_gen::ParamsConfigurator,
     pub energy_evaluator: energy_eval::EnergyEval,
 }
@@ -61,9 +67,39 @@ impl Problem {
     pub fn energy(&mut self,
                   state: &State,
                   energy_type: EnergyType,
-                  id_thread: usize)
+                  id_thread: usize,
+                  mut rng: rand::ThreadRng)
                   -> Option<f64> {
-        return self.energy_evaluator.execute_test_instance(state, energy_type, id_thread);
+  		
+  		 /**Data Needed for the benchmark problems**/
+  		//The dimension of the hypercube for the benchmark_problems
+  		let hypcube_dim=30;
+  		let x: Vec<_> = (0..hypcube_dim).map(|_| {
+            self.domain_dist().ind_sample(&mut rng)
+        }).collect();
+        let p = x.len() as f64;
+                  	
+      	let nrg=match self.problem_type {
+      		
+  			ProblemType::default => self.energy_evaluator.execute_test_instance(state, energy_type, id_thread),
+  			
+  			ProblemType::rastr   => {
+	  				Some(10_f64 * p + x.iter().fold(0_f64, |sum, x| {
+	                    sum + x.powi(2) - 10_f64 * (2_f64 * consts::PI * x).cos()
+	                }))
+  			},
+  			
+  			ProblemType::griew   => {
+	                Some(1_f64 + x.iter().fold(0_f64, |sum, x| {
+	                    sum + x.powi(2)/4000_f64
+	                }) - x.iter().enumerate().fold(1_f64, |prod, (i, x)| {
+	                    prod * (x/((i + 1) as f64).sqrt()).cos()
+	                }))
+            },   
+      	};
+      	
+      	return nrg; 
+        
     }
 
 
@@ -93,4 +129,23 @@ impl Problem {
     pub fn get_population(&mut self, size: usize) -> Vec<State> {
         return self.params_configurator.get_rand_population(size);
     }
+    
+    
+    
+    /// Domain for the benchmark problems.
+    fn domain(&self) -> (f64, f64) {
+        match self.problem_type {
+        	ProblemType::default=> (0.0,0.0),
+            ProblemType::rastr  => (-5.12_f64, 5.12_f64),
+            ProblemType::griew  => (-600_f64, 600_f64),
+        }
+    }
+
+    /// Random distribution for benchmark problem's domain
+    fn domain_dist(&self) -> Range<f64> {
+        let (a, b) = self.domain();
+        Range::new(a, b)
+    }
 }
+
+
