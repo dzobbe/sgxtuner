@@ -29,6 +29,7 @@ use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
 use annealing::solver::common::MrResult;
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
+use perf_counters::PerfMeter;
 
 use time;
 use CoolingSchedule;
@@ -94,11 +95,15 @@ impl Solver for Seqsea {
 
 
         start_time = time::precise_time_ns();
+        let mut perf_meter=PerfMeter::new();
+        
+        let mut cpu_time = perf_meter.get_cpu_exec_time();
 
         for elapsed_steps in 0..self.max_steps {
 
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
-
+ 			cpu_time = perf_meter.get_cpu_exec_time();
+ 		
             let time_2_complete_mins = exec_time * ((self.max_steps - elapsed_steps) as f64) / 60.0;
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
             println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
@@ -119,6 +124,9 @@ impl Solver for Seqsea {
                      Green.paint("[TUNER]"),
                      energy,
                      last_nrg);
+            println!("{} CPU Time: {:.6} ",
+                     Green.paint("[TUNER]"),
+                     cpu_time);
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
 
@@ -162,6 +170,7 @@ impl Solver for Seqsea {
 
                                 results_emitter.send_update(temperature,
                                 							elapsed_time,
+                                							cpu_time,
                                 							new_energy,
                                                             &next_state,
                                                             energy,
@@ -173,6 +182,7 @@ impl Solver for Seqsea {
                                 subsequent_improves = 0;
                                 results_emitter.send_update(temperature,
                                 							elapsed_time,
+                                							cpu_time,
                                 							new_energy,
                                                             &next_state,
                                                             energy,

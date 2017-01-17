@@ -31,6 +31,7 @@ use annealing::solver::common::MrResult;
 use annealing::solver::common::IntermediateResults;
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
+use perf_counters::PerfMeter;
 
 use time;
 use CoolingSchedule; 
@@ -89,6 +90,8 @@ impl Solver for Spis {
         let time_2_complete_hrs = ((elapsed_time as f64) * self.max_steps as f64) / 3600.0;
         
 
+        let mut perf_meter=PerfMeter::new();
+        let mut cpu_time = perf_meter.get_cpu_exec_time();
         
         
 		let mut elapsed_steps = common::ElapsedSteps::new();
@@ -110,6 +113,7 @@ impl Solver for Spis {
 			 	   	Ok(res) =>{
 						results_emitter.send_update(temperature_c.get(),
                         							elapsed_time,
+                        							cpu_time,
                         							res.last_nrg,
                                                     &res.last_state, 
                                                     res.best_nrg,
@@ -127,7 +131,8 @@ impl Solver for Spis {
  		/************************************************************************************************************/
         start_time = time::precise_time_ns();
         'outer: loop {
-        	
+				cpu_time = perf_meter.get_cpu_exec_time();
+
         		if elapsed_steps.get() > self.max_steps || subsequent_accepted.get() > 100 {
         			break 'outer;
         		}
@@ -189,7 +194,6 @@ impl Solver for Spis {
 					
 					/************************************************************************************************************/
 		            thread::spawn(move || {
-
 							let mut worker_nrg=master_energy.clone();
 							let mut worker_state=master_state_c.clone();
   					        let range = Range::new(0.0, 1.0);

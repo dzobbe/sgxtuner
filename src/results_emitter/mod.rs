@@ -30,6 +30,7 @@ pub trait Emitter {
     fn send_update(&mut self,
     			   temperature: f64,
     			   time: f64,
+       			   cputime: f64,
                    measured_val: f64,
                    measured_state: &State,
                    best_val: f64,
@@ -103,6 +104,7 @@ impl Emitter for Emitter2File {
 
         let mut vec_2_write: Vec<String> = Vec::new();
         vec_2_write.push("time_s".to_string());
+        vec_2_write.push("cputime_s".to_string());
         vec_2_write.push("temperature".to_string());
         vec_2_write.push("best_nrg".to_string());
         for param_name in temp_vec.clone().iter().cloned() {
@@ -129,6 +131,7 @@ impl Emitter for Emitter2File {
     fn send_update(&mut self,
     			   temperature: f64,
     			   time: f64,
+    			   cputime: f64,
                    measured_val: f64,
                    measured_state: &State,
                    best_val: f64,
@@ -138,6 +141,7 @@ impl Emitter for Emitter2File {
         let mut vec_2_write: Vec<String> = Vec::new();
 
         vec_2_write.push(time.to_string());
+        vec_2_write.push(cputime.to_string());
         vec_2_write.push(temperature.to_string());
 
         vec_2_write.push(best_val.to_string());

@@ -11,7 +11,6 @@ use std::{thread, env};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use perf_counters::PerfMetrics;
 use meter_proxy::MeterProxy;
 use ansi_term::Colour::{Red, Yellow, Green};
 use std::time::Duration;
@@ -101,7 +100,7 @@ impl EnergyEval {
                                  core: usize)
                                  -> Option<f64> {
 
-        let perf_metrics_handler = PerfMetrics::new();
+        //let perf_metrics_handler = PerfMeter::new();
         
         //Modify the target and benchmark arguments in order to start different instances
         //on different ports. The annealing core is given to them. This will be sum

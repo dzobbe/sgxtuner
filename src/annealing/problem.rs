@@ -135,7 +135,7 @@ impl Problem {
     /// Domain for the benchmark problems.
     fn domain(&self) -> (f64, f64) {
         match self.problem_type {
-        	ProblemType::default=> (0.0,0.0),
+        	ProblemType::default=> (0.0,1.0),
             ProblemType::rastr  => (-5.12_f64, 5.12_f64),
             ProblemType::griew  => (-600_f64, 600_f64),
         }

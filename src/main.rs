@@ -12,7 +12,7 @@ extern crate csv;
 extern crate hwloc;
 extern crate num_cpus;
 extern crate wait_timeout;
-//extern crate papi;
+extern crate raw_cpuid;
 
 #[macro_use]
 extern crate futures;

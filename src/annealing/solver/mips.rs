@@ -107,6 +107,7 @@ impl Solver for Mips {
 			 	   	Ok(res) =>{
 						results_emitter.send_update(0.0,
                         							elapsed_time,
+                        							0.0,
                         							res.last_nrg,
                                                     &res.last_state, 
                                                     res.best_nrg,
