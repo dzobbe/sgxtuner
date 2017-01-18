@@ -1,4 +1,4 @@
- #![feature(stmt_expr_attributes)] 
+ #![feature(stmt_expr_attributes)]
 extern crate x86;
 extern crate perfcnt;
 extern crate rustc_serialize;
@@ -108,7 +108,6 @@ Options:
 
 
 
-
 #[derive(Debug, RustcDecodable)]
 struct Args {
     flag_targ: String,
@@ -178,7 +177,7 @@ fn main() {
     /// Finally,the solver is started
     ///
     let mut problem = Problem {
-    	problem_type: args.flag_problem,
+        problem_type: args.flag_problem,
         params_configurator: params_config,
         energy_evaluator: energy_eval,
     };
@@ -282,8 +281,8 @@ fn eval_temperature(t_min: Option<f64>,
         None => 1.0,
     };
 
-	let mut rng = thread_rng();
-	
+    let mut rng = thread_rng();
+
     let max_temp = match t_max {
         Some(val) => val,
         None => {
@@ -293,7 +292,7 @@ fn eval_temperature(t_min: Option<f64>,
             println!("{} Temperature not provided. Starting its Evaluation",
                      Green.paint("[TUNER]"));
             let mut state = problem.initial_state();
-            match problem.energy(&state, nrg_type.clone(), 0,rng.clone()) {
+            match problem.energy(&state, nrg_type.clone(), 0, rng.clone()) {
                 Some(nrg) => energies.push(nrg),
                 None => panic!("The initial configuration does not allow to calculate the energy"),
             };
@@ -301,7 +300,7 @@ fn eval_temperature(t_min: Option<f64>,
             for i in 0..num_exec {
 
                 let next_state = problem.rand_state();
-                match problem.energy(&next_state, ngr_type_c, 0,rng.clone()) {
+                match problem.energy(&next_state, ngr_type_c, 0, rng.clone()) {
                     Some(new_energy) => {
                         energies.push(new_energy);
                     }

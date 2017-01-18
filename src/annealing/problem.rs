@@ -36,7 +36,7 @@ use rand::distributions::IndependentSample;
  */
 #[derive(Debug, Clone)]
 pub struct Problem {
-	pub problem_type: ProblemType,
+    pub problem_type: ProblemType,
     pub params_configurator: states_gen::ParamsConfigurator,
     pub energy_evaluator: energy_eval::EnergyEval,
 }
@@ -70,36 +70,38 @@ impl Problem {
                   id_thread: usize,
                   mut rng: rand::ThreadRng)
                   -> Option<f64> {
-  		
-  		 /**Data Needed for the benchmark problems**/
-  		//The dimension of the hypercube for the benchmark_problems
-  		let hypcube_dim=30;
-  		let x: Vec<_> = (0..hypcube_dim).map(|_| {
-            self.domain_dist().ind_sample(&mut rng)
-        }).collect();
+
+        /// Data Needed for the benchmark problems*
+        // The dimension of the hypercube for the benchmark_problems
+        let hypcube_dim = 30;
+        let x: Vec<_> = (0..hypcube_dim)
+            .map(|_| self.domain_dist().ind_sample(&mut rng))
+            .collect();
         let p = x.len() as f64;
-                  	
-      	let nrg=match self.problem_type {
-      		
-  			ProblemType::default => self.energy_evaluator.execute_test_instance(state, energy_type, id_thread),
-  			
-  			ProblemType::rastr   => {
-	  				Some(10_f64 * p + x.iter().fold(0_f64, |sum, x| {
-	                    sum + x.powi(2) - 10_f64 * (2_f64 * consts::PI * x).cos()
-	                }))
-  			},
-  			
-  			ProblemType::griew   => {
-	                Some(1_f64 + x.iter().fold(0_f64, |sum, x| {
-	                    sum + x.powi(2)/4000_f64
-	                }) - x.iter().enumerate().fold(1_f64, |prod, (i, x)| {
-	                    prod * (x/((i + 1) as f64).sqrt()).cos()
-	                }))
-            },   
-      	};
-      	
-      	return nrg; 
-        
+
+        let nrg = match self.problem_type {
+
+            ProblemType::default => {
+                self.energy_evaluator.execute_test_instance(state, energy_type, id_thread)
+            }
+
+            ProblemType::rastr => {
+                Some(10_f64 * p +
+                     x.iter().fold(0_f64, |sum, x| {
+                    sum + x.powi(2) - 10_f64 * (2_f64 * consts::PI * x).cos()
+                }))
+            }
+
+            ProblemType::griew => {
+                Some(1_f64 + x.iter().fold(0_f64, |sum, x| sum + x.powi(2) / 4000_f64) -
+                     x.iter().enumerate().fold(1_f64, |prod, (i, x)| {
+                    prod * (x / ((i + 1) as f64).sqrt()).cos()
+                }))
+            }   
+        };
+
+        return nrg;
+
     }
 
 
@@ -129,15 +131,15 @@ impl Problem {
     pub fn get_population(&mut self, size: usize) -> Vec<State> {
         return self.params_configurator.get_rand_population(size);
     }
-    
-    
-    
+
+
+
     /// Domain for the benchmark problems.
     fn domain(&self) -> (f64, f64) {
         match self.problem_type {
-        	ProblemType::default=> (0.0,1.0),
-            ProblemType::rastr  => (-5.12_f64, 5.12_f64),
-            ProblemType::griew  => (-600_f64, 600_f64),
+            ProblemType::default => (0.0, 1.0),
+            ProblemType::rastr => (-5.12_f64, 5.12_f64),
+            ProblemType::griew => (-600_f64, 600_f64),
         }
     }
 
@@ -147,5 +149,3 @@ impl Problem {
         Range::new(a, b)
     }
 }
-
-

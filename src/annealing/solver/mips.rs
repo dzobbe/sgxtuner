@@ -78,7 +78,7 @@ impl Solver for Mips {
 
         let num_cores = common::get_num_cores();
 
-        let mut elapsed_steps = common::ElapsedSteps::new();
+        let mut elapsed_steps = common::SharedGenericCounter::new();
 
         // Creation of the pool of Initial States. It will be composed by the initial default state
         // given by the user and by other num_cores-1 states generated in a random way
@@ -95,32 +95,34 @@ impl Solver for Mips {
         let threads_res = common::ThreadsResults::new();
 
         let mut overall_start_time = time::precise_time_ns();
-        
+
         let (tx, rx) = channel::<IntermediateResults>();
- 		let mut results_emitter = Emitter2File::new();
-        //Spawn the thread that will take care of writing results into a CSV file
+        let mut results_emitter = Emitter2File::new();
+        // Spawn the thread that will take care of writing results into a CSV file
         let elapsed_steps_c = elapsed_steps.clone();
         thread::spawn(move || {
-    		loop{
-        	   let elapsed_time = (time::precise_time_ns() - overall_start_time) as f64 / 1000000000.0f64;
-		 	   match rx.recv(){
-			 	   	Ok(res) =>{
-						results_emitter.send_update(0.0,
-                        							elapsed_time,
-                        							0.0,
-                        							res.last_nrg,
-                                                    &res.last_state, 
+            loop {
+                let elapsed_time = (time::precise_time_ns() - overall_start_time) as f64 /
+                                   1000000000.0f64;
+                match rx.recv() {
+                    Ok(res) => {
+                        results_emitter.send_update(0.0,
+                                                    elapsed_time,
+                                                    0.0,
+                                                    res.last_nrg,
+                                                    &res.last_state,
                                                     res.best_nrg,
                                                     &res.best_state,
                                                     elapsed_steps_c.get());
-			 	   	},
-			 	   	Err(e) => {;} 
-		 	   }
-    		}
-    	});
-        
-        
-        
+                    }
+                    Err(e) => {;
+                    } 
+                }
+            }
+        });
+
+
+
         let handles: Vec<_> = (0..num_cores).map(|core| {
  				
 				let mut pb=mb.create_bar((self.max_steps/num_cores) as u64);

@@ -34,11 +34,11 @@ pub struct MrResult {
 }
 
 #[derive(Debug, Clone)]
-pub struct IntermediateResults{
-	pub last_nrg: f64,
-	pub last_state: State,
-	pub best_nrg: f64,
-	pub best_state: State,
+pub struct IntermediateResults {
+    pub last_nrg: f64,
+    pub last_state: State,
+    pub best_nrg: f64,
+    pub best_state: State,
 }
 
 // Get the number of physical cpu cores
@@ -56,13 +56,8 @@ pub struct StatesPool(Arc<Mutex<Vec<State>>>);
 pub struct NeighborhoodsPool(Arc<Mutex<Vec<State>>>);
 
 #[derive(Debug, Clone)]
-pub struct ElapsedSteps(Arc<Mutex<usize>>);
+pub struct SharedGenericCounter(Arc<Mutex<usize>>);
 
-#[derive(Debug, Clone)]
-pub struct AcceptedStates(Arc<Mutex<usize>>);
-
-#[derive(Debug, Clone)]
-pub struct SubsequentAccStates(Arc<Mutex<usize>>);
 
 #[derive(Debug, Clone)]
 pub struct Temperature {
@@ -95,10 +90,10 @@ impl StatesPool {
         (*pool).pop()
     }
 
-	pub fn shuffle(&self){
+    pub fn shuffle(&self) {
         let mut pool = self.0.lock().unwrap();
         rand::thread_rng().shuffle(&mut pool);
-	}
+    }
 
     pub fn remove_one(&self) -> Option<State> {
         let mut pool = self.0.lock().unwrap();
@@ -113,12 +108,12 @@ impl StatesPool {
         let pool = self.0.lock().unwrap();
         pool.len() as u64
     }
-    
+
     pub fn push_bulk(&self, mut v_1: &mut Vec<State>) {
         let mut pool = self.0.lock().unwrap();
         (*pool).append(&mut v_1)
     }
-} 
+}
 
 /// *********************************************************************************************************
 
@@ -142,47 +137,15 @@ impl NeighborhoodsPool {
         neighs.len() as u64
     }
 }
+
+
 /// *********************************************************************************************************
 
-impl ElapsedSteps {
+impl SharedGenericCounter {
     pub fn new() -> Self {
-        ElapsedSteps(Arc::new(Mutex::new(0)))
+        SharedGenericCounter(Arc::new(Mutex::new(0)))
     }
     pub fn increment(&self) {
-        let mut steps = self.0.lock().unwrap();
-        *steps = *steps + 1;
-    }
-    pub fn get(&self) -> usize {
-        let steps = self.0.lock().unwrap();
-        *steps
-    }
-    pub fn add(&self, val: usize) {
-        let mut steps = self.0.lock().unwrap();
-        *steps=*steps + val;
-    }
-}
-/// *********************************************************************************************************
-
-impl AcceptedStates {
-    pub fn new() -> Self {
-        AcceptedStates(Arc::new(Mutex::new(0)))
-    }
-    pub fn increment(&self) {
-        let mut accepted = self.0.lock().unwrap();
-        *accepted = *accepted + 1;
-    }
-    pub fn get(&self) -> usize {
-        let accepted = self.0.lock().unwrap();
-        *accepted
-    }
-}
-/// *********************************************************************************************************
-
-impl SubsequentAccStates {
-    pub fn new() -> Self {
-        SubsequentAccStates(Arc::new(Mutex::new(0)))
-    }
-    pub fn increment(&self) { 
         let mut rejected = self.0.lock().unwrap();
         *rejected = *rejected + 1;
     }
@@ -194,6 +157,11 @@ impl SubsequentAccStates {
     pub fn reset(&self) {
         let mut rejected = self.0.lock().unwrap();
         *rejected = 0;
+    }
+
+    pub fn add(&self, val: usize) {
+        let mut steps = self.0.lock().unwrap();
+        *steps = *steps + val;
     }
 }
 /// *********************************************************************************************************

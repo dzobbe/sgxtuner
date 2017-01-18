@@ -2,7 +2,7 @@ use time;
 use libc;
 use hwloc;
 use pbr;
-use pbr::{ProgressBar,MultiBar};
+use pbr::{ProgressBar, MultiBar};
 use std::str;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -16,12 +16,12 @@ use ansi_term::Colour::{Red, Yellow, Green};
 use std::time::Duration;
 use EnergyType;
 use std::net::{TcpStream, Shutdown, IpAddr};
-use std::io::{stdout,Stdout};
-use hwloc::{Topology, CPUBIND_PROCESS, CPUBIND_THREAD,CpuSet, TopologyObject, ObjectType};
+use std::io::{stdout, Stdout};
+use hwloc::{Topology, CPUBIND_PROCESS, CPUBIND_THREAD, CpuSet, TopologyObject, ObjectType};
 use libc::{kill, SIGTERM};
 use State;
 
- 
+
 #[derive(Clone,Debug,RustcEncodable)]
 pub struct EnergyEval {
     pub target_path: String,
@@ -39,39 +39,38 @@ impl BenchExecTime {
     fn new() -> Self {
         BenchExecTime(Arc::new(Mutex::new(0)))
     }
-	fn set(&self, val:u32){
+    fn set(&self, val: u32) {
         let mut exec_time = self.0.lock().unwrap();
-        *exec_time=val;
-	}
-	fn get(&self) -> u32{
+        *exec_time = val;
+    }
+    fn get(&self) -> u32 {
         let mut exec_time = self.0.lock().unwrap();
         *exec_time
-	}
+    }
 }
 
 #[derive(Clone)]
-struct SpawnedMeterProxy(Arc<Mutex<HashMap<String,MeterProxy>>>);
+struct SpawnedMeterProxy(Arc<Mutex<HashMap<String, MeterProxy>>>);
 impl SpawnedMeterProxy {
     fn new() -> Self {
         SpawnedMeterProxy(Arc::new(Mutex::new(HashMap::new())))
     }
-    
+
     fn insert(&self, address: String, m_proxy_obj: MeterProxy) {
         let mut spawned_vec = self.0.lock().unwrap();
         (*spawned_vec).insert(address, m_proxy_obj);
     }
-    
+
     fn spawned(&self, address: String) -> bool {
         let spawned_vec = self.0.lock().unwrap();
         (*spawned_vec).contains_key(&address)
     }
-    
+
     fn get(&mut self, address: String) -> MeterProxy {
         let spawned_vec = self.0.lock().unwrap();
-        let res=(*spawned_vec).get(&address).unwrap().clone();
+        let res = (*spawned_vec).get(&address).unwrap().clone();
         res
     }
-
 }
 
 
@@ -80,10 +79,10 @@ lazy_static! {
     static ref bench_exec_time : BenchExecTime     = {BenchExecTime::new()};
 
     }
- 
+
 
 impl EnergyEval {
-    pub fn new() -> EnergyEval { 
+    pub fn new() -> EnergyEval {
         Default::default()
     }
 
@@ -100,37 +99,40 @@ impl EnergyEval {
                                  core: usize)
                                  -> Option<f64> {
 
-        //let perf_metrics_handler = PerfMeter::new();
-        
-        //Modify the target and benchmark arguments in order to start different instances
-        //on different ports. The annealing core is given to them. This will be sum
-        //to the port number
-        let new_target_args=self.change_port_arg(self.clone().target_args, 12400, core);
-        self.target_args=new_target_args;
-        let new_bench_args =self.change_port_arg(self.clone().bench_args, 12600, core);
-        self.bench_args=new_bench_args;
+        // let perf_metrics_handler = PerfMeter::new();
 
-        
+        // Modify the target and benchmark arguments in order to start different instances
+        // on different ports. The annealing core is given to them. This will be sum
+        // to the port number
+        let new_target_args = self.change_port_arg(self.clone().target_args, 12400, core);
+        self.target_args = new_target_args;
+        let new_bench_args = self.change_port_arg(self.clone().bench_args, 12600, core);
+        self.bench_args = new_bench_args;
+
+
         let (target_addr, target_port) = self.parse_args(self.clone().target_args);
-        let (bench_addr, bench_port)   = self.parse_args(self.clone().bench_args);
+        let (bench_addr, bench_port) = self.parse_args(self.clone().bench_args);
 
-        
+
         let mut target_alive: bool = false;
 
-        
+
         // Repeat the execution num_iter times for accurate results
         let mut nrg_vec = Vec::with_capacity(self.num_iter as usize);
-        println!("{} TID [{}] - Evaluation of: {:?}", Green.paint("====>"), core, params);
+        println!("{} TID [{}] - Evaluation of: {:?}",
+                 Green.paint("====>"),
+                 core,
+                 params);
         println!("{} Waiting for {} iterations to complete",
-                 Green.paint("====>"), 
+                 Green.paint("====>"),
                  self.num_iter);
 
         let mut pb = ProgressBar::new(self.num_iter as u64);
         pb.format("╢▌▌░╟");
- 		pb.show_message = true;
- 		pb.message(&format!("Thread [{}] - ", core));
+        pb.show_message = true;
+        pb.message(&format!("Thread [{}] - ", core));
 
- 
+
         for i in 0..self.num_iter {
             pb.inc();
 
@@ -262,7 +264,7 @@ impl EnergyEval {
 			
 
         }
-		
+
         pb.finish();
 
         if target_alive {
@@ -270,12 +272,14 @@ impl EnergyEval {
             let avg_nrg = sum_nrg / self.num_iter as f64;
             match energy_type {
                 EnergyType::throughput => {
-                   println!("Thread [{}] {} {:.4} KB/s", core,
+                    println!("Thread [{}] {} {:.4} KB/s",
+                             core,
                              Red.paint("====> Evaluated Avg. Response Rate: "),
                              avg_nrg);
                 }
                 EnergyType::latency => {
-                    println!("Thread [{}] {} {:.4} ms", core,
+                    println!("Thread [{}] {} {:.4} ms",
+                             core,
                              Red.paint("====> Evaluated Avg. Latency: "),
                              avg_nrg);
                 }
@@ -287,12 +291,12 @@ impl EnergyEval {
 
             return None;
         }
-	
+
     }
 
 
 
-	/************************************************************************************************************/
+    /// *********************************************************************************************************
     fn check_target_alive(&self, target_addr: String, target_port: u16) -> bool {
         // Realize one fake connection to check if the target is alive
         // It can happen that the configuration of parameters does not allow to start the target.
@@ -314,59 +318,64 @@ impl EnergyEval {
         };
         return target_alive;
     }
-	/************************************************************************************************************/
+    /// *********************************************************************************************************
 
-    fn parse_args(&self, args_str: String) -> (String,u16) {
+    fn parse_args(&self, args_str: String) -> (String, u16) {
         let mut args: Vec<&str> = args_str.split_whitespace().collect();
-        
-    	let addr=match (&mut args).into_iter()
-        		.position(|&mut x| x == "-l" || x == "--address" || x == "-h" || x == "--host"  || x == "--server"){
-        			Some(index) => args[index+1].parse().unwrap(),
-            		None => {
-            				unsafe{
-            				if notified==false {
-            					println!("In: {:?} - Address not found. Using 127.0.0.1",args_str);
-            					notified=true;
-            				}}
-            				"127.0.0.1".to_string()
-            			},
-        		};
-        
-       let port=match (&mut args).into_iter()
-        		.position(|&mut x| x == "-p" || x == "--port"){
-        			Some(index) => args[index+1].parse().unwrap(),
-            		None => panic!("ERROR in: {:?} - Please specify the Port in the arguments",args_str),
-        		};
-		
-  		return (addr,port);
-		
+
+        let addr = match (&mut args)
+            .into_iter()
+            .position(|&mut x| {
+                x == "-l" || x == "--address" || x == "-h" || x == "--host" || x == "--server"
+            }) {
+            Some(index) => args[index + 1].parse().unwrap(),
+            None => {
+                unsafe {
+                    if notified == false {
+                        println!("In: {:?} - Address not found. Using 127.0.0.1", args_str);
+                        notified = true;
+                    }
+                }
+                "127.0.0.1".to_string()
+            }
+        };
+
+        let port = match (&mut args)
+            .into_iter()
+            .position(|&mut x| x == "-p" || x == "--port") {
+            Some(index) => args[index + 1].parse().unwrap(),
+            None => {
+                panic!("ERROR in: {:?} - Please specify the Port in the arguments",
+                       args_str)
+            }
+        };
+
+        return (addr, port);
+
     }
-	/************************************************************************************************************/
- 
- 
-    fn change_port_arg(&self, args_str: String,base_value: usize, val_2_add: usize) -> String{
-    	let args= args_str.clone();
-    	let mut new_args_string="".to_string();
-    	let mut gotit=false;
-    	
-    	let vec_args: Vec<&str>=args.split_whitespace().collect();
-        for arg in vec_args{
-        	if gotit{
-				let mut new_port_val=(base_value+val_2_add).to_string();
-				new_args_string=new_args_string+" "+new_port_val.as_str();
-				gotit=false;
-        	}else{
-				new_args_string=new_args_string+" "+arg;
-			}
-        	if arg== "-p" || arg == "--port"{
-        		gotit=true;
-        	}
+    /// *********************************************************************************************************
+
+
+    fn change_port_arg(&self, args_str: String, base_value: usize, val_2_add: usize) -> String {
+        let args = args_str.clone();
+        let mut new_args_string = "".to_string();
+        let mut gotit = false;
+
+        let vec_args: Vec<&str> = args.split_whitespace().collect();
+        for arg in vec_args {
+            if gotit {
+                let mut new_port_val = (base_value + val_2_add).to_string();
+                new_args_string = new_args_string + " " + new_port_val.as_str();
+                gotit = false;
+            } else {
+                new_args_string = new_args_string + " " + arg;
+            }
+            if arg == "-p" || arg == "--port" {
+                gotit = true;
+            }
         }
         return new_args_string;
     }
-	/************************************************************************************************************/
-    
-
 }
 
 /// Load the CpuSet for the given core index.
@@ -374,17 +383,17 @@ fn cpuset_for_core(topology: &Topology, idx: usize) -> CpuSet {
     let cores = (*topology).objects_with_type(&ObjectType::Core).unwrap();
     match cores.get(idx) {
         Some(val) => val.cpuset().unwrap(),
-        None => panic!("No Core found with id {}", idx)
+        None => panic!("No Core found with id {}", idx),
     }
-}	
+}
 
 impl Default for EnergyEval {
     fn default() -> EnergyEval {
         EnergyEval {
-            target_path:  String::new(),
-            bench_path:   String::new(),
-            target_args:  String::new(),
-            bench_args:   String::new(),
+            target_path: String::new(),
+            bench_path: String::new(),
+            target_args: String::new(),
+            bench_args: String::new(),
             num_iter: 1,
         }
     }

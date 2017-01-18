@@ -74,27 +74,29 @@ impl Solver for Prsa {
         let num_cores = common::get_num_cores();
 
         // Generate a Population of specified size with different configurations randomly selected
-        // from the space state 
-        let mut population = common::StatesPool::new_with_val(problem.get_population(self.population_size));
+        // from the space state
+        let mut population =
+            common::StatesPool::new_with_val(problem.get_population(self.population_size));
 
 
-        let mut elapsed_steps = common::ElapsedSteps::new();
-        let mut temperature = common::Temperature::new(self.max_temp,cooler.clone(),self.cooling_schedule.clone());
-		let threads_res=common::ThreadsResults::new();
+        let mut elapsed_steps = common::SharedGenericCounter::new();
+        let mut temperature =
+            common::Temperature::new(self.max_temp, cooler.clone(), self.cooling_schedule.clone());
+        let threads_res = common::ThreadsResults::new();
 
         let mut mb = MultiBar::new();
         /// *********************************************************************************************************
         let mut start_time = time::precise_time_ns();
-        let mut final_best_res= MrResult {
-				            energy: 0.0,
-				            state: HashMap::new(),
-				        };
+        let mut final_best_res = MrResult {
+            energy: 0.0,
+            state: HashMap::new(),
+        };
         'outer: loop {
- 
+
             if elapsed_steps.get() > self.max_steps {
                 break 'outer;
             }
- 
+
             let elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
@@ -108,8 +110,8 @@ impl Solver for Prsa {
 
 
             // Shuffle pointers of population elements
-			population.shuffle();
-			
+            population.shuffle();
+
             let mut th_handlers: Vec<JoinHandle<_>> = Vec::with_capacity(num_cores);
 
             // Divide the population in num_cores chunks
@@ -126,9 +128,9 @@ impl Solver for Prsa {
                     };
                 }
             }
-			
- 
-            for core in 0..num_cores  {
+
+
+            for core in 0..num_cores {
 
                 let sub_population = chunks[core].clone();
 
@@ -140,44 +142,49 @@ impl Solver for Prsa {
                 let max_steps = self.clone().max_steps;
                 let cooling_sched = self.clone().cooling_schedule;
                 let cooler_c = cooler.clone();
-				let population_c=population.clone();
+                let population_c = population.clone();
                 let temperature_c = temperature.clone();
                 let sub_population_c = sub_population.clone();
-				let threads_res_c=threads_res.clone();
+                let threads_res_c = threads_res.clone();
                 let len_subpop = sub_population_c.len();
 
 
 
-                let mut pb = mb.create_bar((len_subpop/2) as u64);
+                let mut pb = mb.create_bar((len_subpop / 2) as u64);
 
-                /// *********************************************************************************************************
+                /*********************************************************************************************************/
                 th_handlers.push(thread::spawn(move || {
                     pb.show_message = true;
-                    
+
                     let mut new_sub_population: Vec<State> = Vec::with_capacity(len_subpop);
-			
+
                     let mut rng = rand::thread_rng();
                     let mut results: Vec<common::MrResult> = Vec::new();
-                    
+
                     for step in 0..len_subpop / 2 {
                         pb.message(&format!("TID [{}] - Sub-Population Exploration Status - ",
                                             core));
 
                         let (parent_1, parent_2) = get_parents(&mut sub_population_c.to_vec());
 
-                        let cost_parent_1 = problem_c.energy(&parent_1, nrg_type.clone(), core,rng.clone()).unwrap();
-                        	
-                        	
-                        let cost_parent_2 = problem_c.energy(&parent_2, nrg_type.clone(), core,rng.clone())
-                            .unwrap();
+                        let cost_parent_1 =
+                            problem_c.energy(&parent_1, nrg_type.clone(), core, rng.clone())
+                                .unwrap();
+
+
+                        let cost_parent_2 =
+                            problem_c.energy(&parent_2, nrg_type.clone(), core, rng.clone())
+                                .unwrap();
 
                         let (mut child_1, mut child_2) =
                             generate_children(&mut problem_c, &parent_1, &parent_2);
- 
-                        let cost_child_1 = problem_c.energy(&child_1, nrg_type.clone(), core,rng.clone())
-                            .unwrap();
-                        let cost_child_2 = problem_c.energy(&child_2, nrg_type.clone(), core,rng.clone())
-                            .unwrap();
+
+                        let cost_child_1 =
+                            problem_c.energy(&child_1, nrg_type.clone(), core, rng.clone())
+                                .unwrap();
+                        let cost_child_2 =
+                            problem_c.energy(&child_2, nrg_type.clone(), core, rng.clone())
+                                .unwrap();
 
                         // Compare cost of parent_1 with cost of child_2
                         let range = Range::new(0.0, 1.0);
@@ -187,13 +194,13 @@ impl Solver for Prsa {
                             EnergyType::latency => -(cost_parent_1 - cost_child_2), 
                         };
 
-                        let (best_state_1,best_cost_1)={
-	                        if range.ind_sample(&mut rng) <
-	                           1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp()) {
-	                            (parent_1,cost_parent_1)
-	                        } else {
-	                            (child_2,cost_child_2)
-	                        }
+                        let (best_state_1, best_cost_1) = {
+                            if range.ind_sample(&mut rng) <
+                               1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp()) {
+                                (parent_1, cost_parent_1)
+                            } else {
+                                (child_2, cost_child_2)
+                            }
                         };
 
 
@@ -204,53 +211,54 @@ impl Solver for Prsa {
                             EnergyType::latency => -(cost_parent_2 - cost_child_1), 
                         };
 
-                        let (best_state_2,best_cost_2)={
-	                        if range.ind_sample(&mut rng) <
-	                           1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp()) {
-	                            (parent_2,cost_parent_2)
-	                        } else {
-	                            (child_1,cost_child_1)
-	                        }
-						};
-	                           
-                       new_sub_population.push(best_state_1.clone());
-                       new_sub_population.push(best_state_2.clone());
-
-
-						let (iter_best_state, iter_best_cost)=match nrg_type {
-                            EnergyType::throughput => {
-                            	if best_cost_1 > best_cost_2{
-                            		(best_state_1,best_cost_1)
-                            	}else{
-                            		(best_state_2,best_cost_2)
-                            	}
-                            },
-                            EnergyType::latency => {
-                            	if best_cost_1 > best_cost_2{
-                            		(best_state_2,best_cost_2)
-                            	}else{
-                            		(best_state_1,best_cost_1)
-                            	}
-                        	}, 
+                        let (best_state_2, best_cost_2) = {
+                            if range.ind_sample(&mut rng) <
+                               1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp()) {
+                                (parent_2, cost_parent_2)
+                            } else {
+                                (child_1, cost_child_1)
+                            }
                         };
-						
-					    results.push(common::MrResult{
-			            	energy: iter_best_cost,
-			            	state: iter_best_state});   
+
+                        new_sub_population.push(best_state_1.clone());
+                        new_sub_population.push(best_state_2.clone());
+
+
+                        let (iter_best_state, iter_best_cost) = match nrg_type {
+                            EnergyType::throughput => {
+                                if best_cost_1 > best_cost_2 {
+                                    (best_state_1, best_cost_1)
+                                } else {
+                                    (best_state_2, best_cost_2)
+                                }
+                            }
+                            EnergyType::latency => {
+                                if best_cost_1 > best_cost_2 {
+                                    (best_state_2, best_cost_2)
+                                } else {
+                                    (best_state_1, best_cost_1)
+                                }
+                            } 
+                        };
+
+                        results.push(common::MrResult {
+                            energy: iter_best_cost,
+                            state: iter_best_state,
+                        });
                         pb.inc();
                         temperature_c.update(elapsed_steps_c.get());
-    					elapsed_steps_c.increment();
-                        
+                        elapsed_steps_c.increment();
+
                     }
-                   	
-                   	let chunk_best_res=eval_best_res(&mut results, nrg_type);
-                   	threads_res_c.push(chunk_best_res);
-                  
+
+                    let chunk_best_res = eval_best_res(&mut results, nrg_type);
+                    threads_res_c.push(chunk_best_res);
+
                     pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
 
                     population_c.push_bulk(&mut new_sub_population);
                 }));
- 
+
             }
 
             mb.listen();
@@ -258,12 +266,12 @@ impl Solver for Prsa {
             for h in th_handlers {
                 h.join().unwrap();
             }
-            
-            let final_best_res=eval_best_res(&mut threads_res.get_coll(),self.energy_type);
 
-            
-            /************************************************************************************************************/	
-	        
+            let final_best_res = eval_best_res(&mut threads_res.get_coll(), self.energy_type);
+
+
+
+
         }
 
 
@@ -271,35 +279,31 @@ impl Solver for Prsa {
     }
 }
 
-fn eval_best_res(workers_res: &mut Vec<MrResult>, nrg_type: EnergyType) -> MrResult{
-	//Get results of worker threads (each one will put its best evaluated energy) and 
-    //choose between them which one will be the best
-   	let first_elem = workers_res.pop().unwrap();
-   	
-   	let mut best_state = first_elem.state;
-   	let mut best_cost = first_elem.energy;
-   	
-   	for elem in workers_res.iter() {
-   		let diff=match nrg_type {
-                EnergyType::throughput => {
-                	 elem.energy-best_cost
-                },
-                EnergyType::latency => {
-                	-(elem.energy-best_cost)
-                } 
-            };
-   		if diff > 0.0 {
-   			best_cost=elem.clone().energy;
-   			best_state=elem.clone().state;
-   		}
-   	}
-   	
-   	MrResult {
-            energy: best_cost,
-            state: best_state,
+fn eval_best_res(workers_res: &mut Vec<MrResult>, nrg_type: EnergyType) -> MrResult {
+    // Get results of worker threads (each one will put its best evaluated energy) and
+    // choose between them which one will be the best
+    let first_elem = workers_res.pop().unwrap();
+
+    let mut best_state = first_elem.state;
+    let mut best_cost = first_elem.energy;
+
+    for elem in workers_res.iter() {
+        let diff = match nrg_type {
+            EnergyType::throughput => elem.energy - best_cost,
+            EnergyType::latency => -(elem.energy - best_cost), 
+        };
+        if diff > 0.0 {
+            best_cost = elem.clone().energy;
+            best_state = elem.clone().state;
         }
+    }
+
+    MrResult {
+        energy: best_cost,
+        state: best_state,
+    }
 }
- 
+
 
 fn get_parents(sub_population: &mut Vec<State>) -> (State, State) {
     let mut rng = rand::thread_rng();
@@ -321,23 +325,23 @@ fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State) 
 
     for i in 0..parent_1.len() {
         let (mut key_p1, mut val_p1) = p1_iter.next().unwrap();
-        let mut key_p2=key_p1;
+        let mut key_p2 = key_p1;
         let mut val_p2 = parent_2.get(key_p2).unwrap();
 
 
         if i < cutting_point {
             child_1.insert(key_p1.clone(), val_p1.clone());
             child_2.insert(key_p2.clone(), val_p2.clone());
-        } else { 
+        } else {
             child_1.insert(key_p2.clone(), val_p2.clone());
             child_2.insert(key_p1.clone(), val_p1.clone());
-        } 
-    }  
+        }
+    }
 
-	println!("Ress  {:?} - {:?}", child_1,child_2);
+    println!("Ress  {:?} - {:?}", child_1, child_2);
     // Enforce Uniform Mutation on Child_1: This operator replaces the value of the chosen "gene" (configuration parameter) with a
     // uniform random value selected between the upper and lower bounds for that gene (into the space state of the configuration parameter).
-    let mut keys: Vec<_> = child_1.keys() 
+    let mut keys: Vec<_> = child_1.keys()
         .map(|arg| arg.clone())
         .collect();
 

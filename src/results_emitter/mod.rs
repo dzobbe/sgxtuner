@@ -28,9 +28,9 @@ pub struct Emitter2Influx {
 pub trait Emitter {
     fn new() -> Self;
     fn send_update(&mut self,
-    			   temperature: f64,
-    			   time: f64,
-       			   cputime: f64,
+                   temperature: f64,
+                   time: f64,
+                   cputime: f64,
                    measured_val: f64,
                    measured_state: &State,
                    best_val: f64,
@@ -129,9 +129,9 @@ impl Emitter for Emitter2File {
 
 
     fn send_update(&mut self,
-    			   temperature: f64,
-    			   time: f64,
-    			   cputime: f64,
+                   temperature: f64,
+                   time: f64,
+                   cputime: f64,
                    measured_val: f64,
                    measured_state: &State,
                    best_val: f64,

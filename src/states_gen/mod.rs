@@ -30,20 +30,20 @@ static initial_decreasing_factor: f64 = 0.6;
 
 impl ParamsConfigurator {
     pub fn new(file_path: String) -> ParamsConfigurator {
-		let mut params_configurator = ParamsConfigurator {
-		            default_param: HashMap::new(),
-		            param_file_path: file_path,
-		            params_space_state: HashMap::new(),
-		            params_indexes: HashMap::new(),
-		            visited_params_states: Box::new(HashSet::new()),
-		            };
-		params_configurator.init();
-		
-		params_configurator 
-     }
+        let mut params_configurator = ParamsConfigurator {
+            default_param: HashMap::new(),
+            param_file_path: file_path,
+            params_space_state: HashMap::new(),
+            params_indexes: HashMap::new(),
+            visited_params_states: Box::new(HashSet::new()),
+        };
+        params_configurator.init();
+
+        params_configurator
+    }
 
     pub fn get_initial_param_conf(&mut self) -> State {
-    	return self.clone().default_param;
+        return self.clone().default_param;
     }
 
 
@@ -51,7 +51,7 @@ impl ParamsConfigurator {
 	Access the initial-params.conf file and extract the info on parameters to tune
 	It returns the initial params state given in input by the user
 	**/
-    pub fn init(&mut self)  {
+    pub fn init(&mut self) {
 
         let f = self.param_file_path.clone();
         // Create a path to the desired file
@@ -63,8 +63,8 @@ impl ParamsConfigurator {
             Err(why) => panic!("couldn't open {}: {}", display, why.description()),
             Ok(file) => file,
         };
-		
-		
+
+
         let mut initial_params_state: State = HashMap::new();
         let file_reader = BufReader::new(&file);
         let mut index = 0;
@@ -270,7 +270,7 @@ impl ParamsConfigurator {
         let mut new_params_state: State = HashMap::new();
 
         // The HashMap iterator provides (key,value) pair in a random order
-        for param_name in  self.params_space_state.keys() {
+        for param_name in self.params_space_state.keys() {
 
             let param_space_state = self.params_space_state.get(param_name).unwrap();
             let new_value = rand::thread_rng().choose(&param_space_state).unwrap();
@@ -293,5 +293,3 @@ impl ParamsConfigurator {
         return res_vec;
     }
 }
-
-
