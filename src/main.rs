@@ -22,7 +22,10 @@ extern crate futures_cpupool;
 
 #[macro_use]
 extern crate lazy_static;
-extern crate influent;
+//extern crate influent;
+
+extern crate ssh2;
+
 
 use ansi_term::Colour::{Green, Yellow};
 use std::time::Duration;

@@ -6,5 +6,5 @@ target/debug/annealing-tuner --targ=/home/ubuntu/TUD-Work/scripts/build/build/bi
 --energy=throughput \
 --cooling=basic_exp_cooling \
 --problem=default \
---version=spis
+--version=seqsea
 

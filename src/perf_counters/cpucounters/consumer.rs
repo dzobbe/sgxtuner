@@ -42,13 +42,12 @@ impl CountersConsumer {
         return self.get_ipc(before, after) as f64 * get_max_th_core() as f64;
     }
 
-
     pub fn get_ipc_utilization(&self, before: CntMeasurement, after: CntMeasurement) -> f64 {
 
         return (self.get_core_ipc(before, after) as f64 / max_ipc as f64) * 100.0;
     }
 
-
+ 
     pub fn get_cpi(&mut self, before: CntMeasurement, after: CntMeasurement) -> f64 {
 
         let cpi = (after.cpu_clk_unhalted_thread - before.cpu_clk_unhalted_thread) as f64 /
@@ -78,8 +77,6 @@ impl CountersConsumer {
 
         // Get instruction count
         let instruction_count = (after.inst_retired_any - before.inst_retired_any) as f64;
-
-        // println!("ee {} {}",after.get_inst_ret(),before.get_inst_ret());
 
         // Evaluate CPU execution time=CPI * CPU ClkCycle * Instruction count
         return cpi * cpu_clock_cycle * instruction_count;

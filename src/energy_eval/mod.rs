@@ -20,7 +20,9 @@ use std::io::{stdout, Stdout};
 use hwloc::{Topology, CPUBIND_PROCESS, CPUBIND_THREAD, CpuSet, TopologyObject, ObjectType};
 use libc::{kill, SIGTERM};
 use State;
+use energy_eval::command_executor::CommandExecutor;
 
+pub mod command_executor;
 
 #[derive(Clone,Debug,RustcEncodable)]
 pub struct EnergyEval {
@@ -137,6 +139,7 @@ impl EnergyEval {
             pb.inc();
 
              
+             
 			/***********************************************************************************************************
 			/// **
             /// Start METER-PROXY, which will interpose between the Target and the
@@ -169,22 +172,25 @@ impl EnergyEval {
             /// Launch TARGET Application
             /// *  
 			************************************************************************************************************/
-            let mut command_2_launch=Command::new(self.target_path.clone());
             /// Set the environement variables that will configure the parameters
 	        /// needed by the target application
 	        ///
-            for (param_name, param_value) in params.iter() {
-           		command_2_launch.env(param_name.to_string(), param_value.to_string());
-        	}
+	        let remote_cmd_executor=command_executor::RemoteCommandExecutor{
+	        					host: "sereca-maas.cloudandheat.com:10104",
+								user_4_agent: "ubuntu",
+								};
+	        				
+        	remote_cmd_executor.execute_target(self.target_path.clone(), self.target_args.clone(), &params.clone());
+	        
+	        
+	        //remote_cmd_executor.execute_command("/home/ubuntu/TUD-Work/scripts/build/build/bin/memcached -l 127.0.0.1 -p 12347 -vv");
+	        
             
-            let mut vec_args: Vec<&str> = self.target_args.split_whitespace().collect();
-            let mut target_process = Some(command_2_launch
-                .args(vec_args.as_ref()) 
-                .stdout(Stdio::piped())
-                .spawn()
-                .expect("Failed to execute Target!"));
-        	
-            let pid_target = target_process.as_mut().unwrap().id();
+           
+   	        /*let local_cmd_executor=command_executor::LocalCommandExecutor;     
+            
+         	local_cmd_executor.execute_target(self.target_path.clone(), self.target_args.clone(), params.clone());*/
+            
 			
 
             // Wait for target to startup
@@ -192,7 +198,7 @@ impl EnergyEval {
             // Check if the target is alive
             target_alive = self.check_target_alive(target_addr.clone(), target_port as u16);
             if target_alive == false {
-                target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
+                //target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
                 break;
             }
  
@@ -260,7 +266,7 @@ impl EnergyEval {
             /// *
 			*************************************************************************************************************/
             meter_proxy_c.reset();
-            target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
+            //target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
 			
 
         }
