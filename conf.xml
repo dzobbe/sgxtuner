@@ -1,0 +1,31 @@
+<target>
+    <execution>remote</execution>
+    <host>sereca-maas.cloudandheat.com:10104</host>
+    <user>ubuntu</user>
+    <bin>memcached</bin>
+    <path>/home/ubuntu/TUD-Work/scripts/build/build/bin/</path>
+    <args>-l 127.0.0.1 -p 12347</args>
+    <address>127.0.0.1</address>
+    <port>12347</port>
+</target>
+<bench>
+    <execution>local</execution>
+    <host></host>
+    <user></user>
+    <bin>mcperf</bin>
+    <path>/usr/local/bin/</path>
+    <args>-p 12347 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16</args>
+    <address>127.0.0.1</address>
+    <port>12347</port>
+</bench>
+<annealing>
+    <max_step>10000</max_step>
+    <num_iter>1</num_iter>
+    <min_temp>0.01</min_temp>
+    <max_temp>100</max_temp>
+    <energy>throughput</energy>
+    <cooling>exponential</cooling>
+    <problem>default</problem>
+    <version>seqsea</version>
+</annealing>
+

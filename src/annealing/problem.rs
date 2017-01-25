@@ -66,7 +66,6 @@ impl Problem {
 	**/
     pub fn energy(&mut self,
                   state: &State,
-                  energy_type: EnergyType,
                   id_thread: usize,
                   mut rng: rand::ThreadRng)
                   -> Option<f64> {
@@ -82,7 +81,7 @@ impl Problem {
         let nrg = match self.problem_type {
 
             ProblemType::default => {
-                self.energy_evaluator.execute_test_instance(state, energy_type, id_thread)
+                self.energy_evaluator.execute_test_instance(state, id_thread)
             }
 
             ProblemType::rastr => {

@@ -9,7 +9,6 @@ use std::collections::{HashMap, HashSet};
 use rand::Rng;
 use ansi_term::Colour::{Yellow, Red};
 use std::boxed::Box;
-use std::mem;
 use State;
 
 #[derive(Clone,Debug,RustcEncodable)]

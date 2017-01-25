@@ -159,7 +159,7 @@ impl Solver for Mips {
         			let mut start_time = time::precise_time_ns(); 
         			
 					let mut worker_state=initial_states_pool_c.remove_one().unwrap();
-				 	let mut worker_nrg = match problem_c.energy(&worker_state.clone(), nrg_type.clone(), core,rng.clone()) {
+				 	let mut worker_nrg = match problem_c.energy(&worker_state.clone(), core,rng.clone()) {
 			            Some(nrg) => nrg,
 			            None => panic!("The initial configuration does not allow to calculate the energy"),
 			        };
@@ -213,7 +213,7 @@ impl Solver for Mips {
         	
 				                let next_state = problem_c.new_state(&worker_state,max_steps,worker_elapsed_steps).unwrap();
 				                
-								let accepted_state = match problem_c.energy(&next_state.clone(), nrg_type.clone(), core,rng.clone()) {
+								let accepted_state = match problem_c.energy(&next_state.clone(), core,rng.clone()) {
 				                    Some(new_energy) => {
             	                        last_nrg = new_energy;
 

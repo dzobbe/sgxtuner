@@ -29,7 +29,7 @@ use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
 use annealing::solver::common::MrResult;
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
-use perf_counters::cpucounters::consumer::CountersConsumer;
+//use perf_counters::cpucounters::consumer::CountersConsumer;
 
 use time;
 use CoolingSchedule;
@@ -78,7 +78,7 @@ impl Solver for Seqsea {
         let mut start_time = time::precise_time_ns();
 
         let mut state = problem.initial_state();
-        let mut energy = match problem.energy(&state, self.energy_type.clone(), 0, rng.clone()) {
+        let mut energy = match problem.energy(&state, 0, rng.clone()) {
             Some(nrg) => nrg,
             None => panic!("The initial configuration does not allow to calculate the energy"),
         };
@@ -92,21 +92,22 @@ impl Solver for Seqsea {
 
 
         start_time = time::precise_time_ns();
-        let mut perf_meter = CountersConsumer::new();
-        let mut initial_counters = perf_meter.get_current_counters();
+       /* let mut perf_meter = CountersConsumer::new();
+        let mut initial_counters = perf_meter.get_current_counters();*/
 
+		let cpu_time=0.0;
         for elapsed_steps in 0..self.max_steps {
 
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
-            let current_counters = perf_meter.get_current_counters();
+            /*let current_counters = perf_meter.get_current_counters();
             let cpu_time =
                 perf_meter.get_cpu_exec_time(initial_counters.clone(), current_counters.clone());
             let ipc = perf_meter.get_core_ipc(initial_counters.clone(), current_counters.clone());
             let ipc_util =
                 perf_meter.get_ipc_utilization(initial_counters.clone(), current_counters.clone());
             let core_utilization =
-                perf_meter.get_core_utilization(initial_counters.clone(), current_counters);
+                perf_meter.get_core_utilization(initial_counters.clone(), current_counters);*/
 
 
             let time_2_complete_mins = exec_time * ((self.max_steps - elapsed_steps) as f64) / 60.0;
@@ -129,13 +130,13 @@ impl Solver for Seqsea {
                      Green.paint("[TUNER]"),
                      energy,
                      last_nrg);
-            println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
+           /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
                       Utilization: {:.2}%",
                      Green.paint("[TUNER]"),
                      cpu_time,
                      ipc,
                      ipc_util,
-                     core_utilization);
+                     core_utilization);*/
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
 
@@ -153,7 +154,7 @@ impl Solver for Seqsea {
                 };
 
                 let accepted_state =
-                    match problem.energy(&next_state, self.clone().energy_type, 0, rng.clone()) {
+                    match problem.energy(&next_state, 0, rng.clone()) {
                         Some(new_energy) => {
                             last_nrg = new_energy;
 

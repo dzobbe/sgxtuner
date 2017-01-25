@@ -31,7 +31,7 @@ use annealing::solver::common::MrResult;
 use annealing::solver::common::IntermediateResults;
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
-use perf_counters::cpucounters::consumer::CountersConsumer;
+//use perf_counters::cpucounters::consumer::CountersConsumer;
 
 use time;
 use CoolingSchedule;
@@ -81,7 +81,7 @@ impl Solver for Spis {
 
         let mut master_state = problem.initial_state();
         let mut master_energy =
-            match problem.energy(&master_state.clone(), self.energy_type.clone(), 0, rng) {
+            match problem.energy(&master_state.clone(), 0, rng) {
                 Some(nrg) => nrg,
                 None => panic!("The initial configuration does not allow to calculate the energy"),
             };
@@ -90,10 +90,10 @@ impl Solver for Spis {
         let time_2_complete_hrs = ((elapsed_time as f64) * self.max_steps as f64) / 3600.0;
 
 
-        let mut perf_meter = CountersConsumer::new();
+     /*   let mut perf_meter = CountersConsumer::new();
         let mut initial_counters = perf_meter.get_current_counters();
-        let mut cpu_time = 0.0;
-
+        let mut cpu_time = 0.0;*/
+let mut cpu_time = 0.0;
         let mut elapsed_steps = common::SharedGenericCounter::new();
         let mut accepted = common::SharedGenericCounter::new();
         let mut subsequent_rej = common::SharedGenericCounter::new();
@@ -131,14 +131,14 @@ impl Solver for Spis {
         /// *********************************************************************************************************
         start_time = time::precise_time_ns();
         'outer: loop {
-            let current_counters = perf_meter.get_current_counters();
+           /* let current_counters = perf_meter.get_current_counters();
             let cpu_time =
                 perf_meter.get_cpu_exec_time(initial_counters.clone(), current_counters.clone());
             let ipc = perf_meter.get_core_ipc(initial_counters.clone(), current_counters.clone());
             let ipc_util =
                 perf_meter.get_ipc_utilization(initial_counters.clone(), current_counters.clone());
             let core_utilization =
-                perf_meter.get_core_utilization(initial_counters.clone(), current_counters);
+                perf_meter.get_core_utilization(initial_counters.clone(), current_counters);*/
 
 
             if elapsed_steps.get() > self.max_steps {
@@ -171,13 +171,13 @@ impl Solver for Spis {
             println!("{} Accepted Energy: {:.4}",
                      Green.paint("[TUNER]"),
                      master_energy);
-            println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
+           /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
                       Utilization: {:.2}%",
                      Green.paint("[TUNER]"),
                      cpu_time,
                      ipc,
                      ipc_util,
-                     core_utilization);
+                     core_utilization);*/
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
 
@@ -238,7 +238,7 @@ impl Solver for Spis {
 										
 										last_state=next_state.clone();
 									
-										let accepted_state = match problem_c.energy(&next_state.clone(), nrg_type.clone(), core,rng.clone()) {
+										let accepted_state = match problem_c.energy(&next_state.clone(), core,rng.clone()) {
 						                    Some(new_energy) => {
 						            			println!("Thread : {:?} - Step: {:?} - State: {:?} - Energy: {:?}",core, elapsed_steps_c.get(),next_state,new_energy);
 												last_nrg=new_energy;

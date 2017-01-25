@@ -72,6 +72,7 @@ impl MeterProxy {
         let back_address =
             (b_addr_c + ":" + &self.back_port.to_string()).parse::<SocketAddr>().unwrap();
 
+		println!("front {:?} back {:?}",front_address,back_address);
         let listener = TcpListener::bind(&front_address, &handle).unwrap();
 
 

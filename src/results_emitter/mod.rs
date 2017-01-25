@@ -1,7 +1,7 @@
-
+/*
 use influent::create_client;
 use influent::client::{Client, Credentials};
-use influent::measurement::{Measurement, Value};
+use influent::measurement::{Measurement, Value};*/
 
 use csv;
 use states_gen;
@@ -19,7 +19,7 @@ pub struct Emitter2File {
 pub struct Emitter2Influx {
     host: String,
     port: usize,
-    client: Client,
+   // client: Client,
 }
 
 

@@ -168,22 +168,22 @@ impl Solver for Prsa {
                         let (parent_1, parent_2) = get_parents(&mut sub_population_c.to_vec());
 
                         let cost_parent_1 =
-                            problem_c.energy(&parent_1, nrg_type.clone(), core, rng.clone())
+                            problem_c.energy(&parent_1, core, rng.clone())
                                 .unwrap();
 
 
                         let cost_parent_2 =
-                            problem_c.energy(&parent_2, nrg_type.clone(), core, rng.clone())
+                            problem_c.energy(&parent_2, core, rng.clone())
                                 .unwrap();
 
                         let (mut child_1, mut child_2) =
                             generate_children(&mut problem_c, &parent_1, &parent_2);
 
                         let cost_child_1 =
-                            problem_c.energy(&child_1, nrg_type.clone(), core, rng.clone())
+                            problem_c.energy(&child_1, core, rng.clone())
                                 .unwrap();
                         let cost_child_2 =
-                            problem_c.energy(&child_2, nrg_type.clone(), core, rng.clone())
+                            problem_c.energy(&child_2, core, rng.clone())
                                 .unwrap();
 
                         // Compare cost of parent_1 with cost of child_2

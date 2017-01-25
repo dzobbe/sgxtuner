@@ -15,39 +15,26 @@ use meter_proxy::MeterProxy;
 use ansi_term::Colour::{Red, Yellow, Green};
 use std::time::Duration;
 use EnergyType;
+use ExecutionType;
 use std::net::{TcpStream, Shutdown, IpAddr};
 use std::io::{stdout, Stdout};
 use hwloc::{Topology, CPUBIND_PROCESS, CPUBIND_THREAD, CpuSet, TopologyObject, ObjectType};
 use libc::{kill, SIGTERM};
 use State;
+use energy_eval::command_executor::CommandExecutor;
+use xml_reader::XMLReader;
 
+pub mod command_executor;
 
-#[derive(Clone,Debug,RustcEncodable)]
+#[derive(Clone,Debug)]
 pub struct EnergyEval {
-    pub target_path: String,
-    pub bench_path: String,
-    pub target_args: String,
-    pub bench_args: String,
-    pub num_iter: u8,
+    pub xml_reader: XMLReader, 
 }
 
 
 static mut notified: bool = false;
 
-struct BenchExecTime(Arc<Mutex<u32>>);
-impl BenchExecTime {
-    fn new() -> Self {
-        BenchExecTime(Arc::new(Mutex::new(0)))
-    }
-    fn set(&self, val: u32) {
-        let mut exec_time = self.0.lock().unwrap();
-        *exec_time = val;
-    }
-    fn get(&self) -> u32 {
-        let mut exec_time = self.0.lock().unwrap();
-        *exec_time
-    }
-}
+
 
 #[derive(Clone)]
 struct SpawnedMeterProxy(Arc<Mutex<HashMap<String, MeterProxy>>>);
@@ -76,16 +63,10 @@ impl SpawnedMeterProxy {
 
 lazy_static! {
     static ref spawned_proxies : SpawnedMeterProxy     = {SpawnedMeterProxy::new()};
-    static ref bench_exec_time : BenchExecTime     = {BenchExecTime::new()};
-
     }
 
 
 impl EnergyEval {
-    pub fn new() -> EnergyEval {
-        Default::default()
-    }
-
 
 
     /**
@@ -95,7 +76,6 @@ impl EnergyEval {
 	**/
     pub fn execute_test_instance(&mut self,
                                  params: &State,
-                                 energy_type: EnergyType,
                                  core: usize)
                                  -> Option<f64> {
 
@@ -104,38 +84,36 @@ impl EnergyEval {
         // Modify the target and benchmark arguments in order to start different instances
         // on different ports. The annealing core is given to them. This will be sum
         // to the port number
-        let new_target_args = self.change_port_arg(self.clone().target_args, 12400, core);
-        self.target_args = new_target_args;
-        let new_bench_args = self.change_port_arg(self.clone().bench_args, 12600, core);
-        self.bench_args = new_bench_args;
+        let new_target_args = self.change_port_arg(self.xml_reader.targ_args(), 12400, core);
+        let new_bench_args = self.change_port_arg(self.xml_reader.bench_args(), 12600, core);
 
 
-        let (target_addr, target_port) = self.parse_args(self.clone().target_args);
-        let (bench_addr, bench_port) = self.parse_args(self.clone().bench_args);
-
+        let (target_addr, target_port) = self.parse_args(new_target_args.clone());
+        let (bench_addr, bench_port) = self.parse_args(new_bench_args.clone());
+		
 
         let mut target_alive: bool = false;
 
-
         // Repeat the execution num_iter times for accurate results
-        let mut nrg_vec = Vec::with_capacity(self.num_iter as usize);
+        let mut nrg_vec = Vec::with_capacity(self.xml_reader.ann_num_iter() as usize);
         println!("{} TID [{}] - Evaluation of: {:?}",
                  Green.paint("====>"),
                  core,
                  params);
         println!("{} Waiting for {} iterations to complete",
                  Green.paint("====>"),
-                 self.num_iter);
+                 self.xml_reader.ann_num_iter());
 
-        let mut pb = ProgressBar::new(self.num_iter as u64);
+        let mut pb = ProgressBar::new(self.xml_reader.ann_num_iter() as u64);
         pb.format("╢▌▌░╟");
         pb.show_message = true;
         pb.message(&format!("Thread [{}] - ", core));
 
 
-        for i in 0..self.num_iter {
+        for i in 0..self.xml_reader.ann_num_iter() {
             pb.inc();
 
+             
              
 			/***********************************************************************************************************
 			/// **
@@ -163,71 +141,68 @@ impl EnergyEval {
           
   
             
-            
 			/***********************************************************************************************************
             /// **
             /// Launch TARGET Application
             /// *  
 			************************************************************************************************************/
-            let mut command_2_launch=Command::new(self.target_path.clone());
             /// Set the environement variables that will configure the parameters
 	        /// needed by the target application
 	        ///
-            for (param_name, param_value) in params.iter() {
-           		command_2_launch.env(param_name.to_string(), param_value.to_string());
-        	}
-            
-            let mut vec_args: Vec<&str> = self.target_args.split_whitespace().collect();
-            let mut target_process = Some(command_2_launch
-                .args(vec_args.as_ref()) 
-                .stdout(Stdio::piped())
-                .spawn()
-                .expect("Failed to execute Target!"));
-        	
-            let pid_target = target_process.as_mut().unwrap().id();
+	        let host_targ= self.xml_reader.targ_host();
+	        let user_targ=self.xml_reader.targ_host_user();
+    		let (tx, rx) = channel::<bool>();
+	        match self.xml_reader.targ_exec_type(){
+	        	ExecutionType::local  => {
+	        		let local_cmd_executor=command_executor::LocalCommandExecutor;     
+		         	local_cmd_executor.execute_target(self.xml_reader.targ_path().clone(), self.xml_reader.targ_bin().clone(), new_target_args.clone(), &params.clone(),rx);
+	        	}
+	        	ExecutionType::remote => {
+			        let remote_cmd_executor=command_executor::RemoteCommandExecutor{
+	        					host:host_targ,
+								user_4_agent: user_targ,
+							};
+		        	remote_cmd_executor.execute_target(self.xml_reader.targ_path().clone(), self.xml_reader.targ_bin().clone(), new_target_args.clone(), &params.clone(),rx);
+	        	}
+	        }
 			
-
             // Wait for target to startup
             thread::sleep(Duration::from_millis(1000));
             // Check if the target is alive
             target_alive = self.check_target_alive(target_addr.clone(), target_port as u16);
             if target_alive == false {
-                target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
+				//Send signal to target to exit			
+				tx.send(true);
                 break;
             }
  
-            
+ 
+ 			let start_time = time::precise_time_ns();
+	  
 			/***********************************************************************************************************
             /// **
             /// Launch BENCHMARK Application and measure execution time
             /// *
-			************************************************************************************************************/            
-            let start_time = time::precise_time_ns();
-            
-            let bench_args: Vec<&str>=self.bench_args.split_whitespace().collect();
-            let mut bench_process = Command::new(self.bench_path.clone())
-                .args(bench_args.as_ref())
-                .stderr(Stdio::piped())
-                .spawn()
-                .expect("Failed to execute Benchmark!"); 
-            
-            let pid=bench_process.id();
-            thread::spawn(move || { 
-            		 if bench_exec_time.get() != 0{
- 	            		thread::sleep(Duration::from_millis((bench_exec_time.get()*4) as u64));
-            		 	unsafe{kill(pid as i32, SIGTERM);}
-        		 	}
-            	});
-            
-            bench_process.wait().expect("Failed to wait on Benchmark");
-  
-            
-            let end_time = time::precise_time_ns();
-			 
-            let elapsed_ns: f64 = (end_time - start_time) as f64;
-            let elapsed_time = elapsed_ns / 1000000000.0f64;
-             
-			bench_exec_time.set((elapsed_ns / 1000000.0f64) as u32);
+			************************************************************************************************************/ 
+			let host_bench= self.xml_reader.bench_host();
+			let user_bench=self.xml_reader.bench_host_user();
+			match self.xml_reader.bench_exec_type(){
+	        	ExecutionType::local  => {
+	        		let local_cmd_executor=command_executor::LocalCommandExecutor;    
+		         	local_cmd_executor.execute_bench(self.xml_reader.bench_path().clone(), self.xml_reader.bench_bin().clone(), new_bench_args.clone());
+	        	}
+	        	ExecutionType::remote => {
+			        let remote_cmd_executor=command_executor::RemoteCommandExecutor{
+	        					host: host_bench,
+								user_4_agent: user_bench,
+							};
+		        	remote_cmd_executor.execute_bench(self.xml_reader.bench_path().clone(), self.xml_reader.bench_bin().clone(), new_bench_args.clone());
+	        	}
+	        }
+	    	let end_time = time::precise_time_ns();
+		    let elapsed_ns: f64 = (end_time - start_time) as f64;
+		    let elapsed_time = elapsed_ns / 1000000000.0f64;
+
   
 			
             
@@ -237,7 +212,7 @@ impl EnergyEval {
             /// ENERGY Evaluation
             /// *
 			************************************************************************************************************/    
-            let nrg: f64 = match energy_type {
+            let nrg: f64 = match self.xml_reader.ann_energy() {
                 EnergyType::throughput => {
                     // Throughput Evaluation
                     let num_bytes = meter_proxy_c.get_num_kbytes_rcvd() as f64;
@@ -248,6 +223,7 @@ impl EnergyEval {
                 EnergyType::latency => {
                     // Latency Evaluation
                     meter_proxy_c.get_num_resp() 
+                  
                 }
             };
             nrg_vec.push(nrg);
@@ -260,8 +236,8 @@ impl EnergyEval {
             /// *
 			*************************************************************************************************************/
             meter_proxy_c.reset();
-            target_process.as_mut().unwrap().kill().expect("Target Process wasn't running");
-			
+			//Send signal to target to exit			
+			tx.send(true);
 
         }
 
@@ -269,8 +245,8 @@ impl EnergyEval {
 
         if target_alive {
             let sum_nrg: f64 = nrg_vec.iter().sum();
-            let avg_nrg = sum_nrg / self.num_iter as f64;
-            match energy_type {
+            let avg_nrg = sum_nrg / self.xml_reader.ann_num_iter() as f64;
+            match self.xml_reader.ann_energy() {
                 EnergyType::throughput => {
                     println!("Thread [{}] {} {:.4} KB/s",
                              core,
@@ -344,11 +320,8 @@ impl EnergyEval {
             .into_iter()
             .position(|&mut x| x == "-p" || x == "--port") {
             Some(index) => args[index + 1].parse().unwrap(),
-            None => {
-                panic!("ERROR in: {:?} - Please specify the Port in the arguments",
-                       args_str)
-            }
-        };
+            None => {12600}
+        }; 
 
         return (addr, port);
 
@@ -387,14 +360,3 @@ fn cpuset_for_core(topology: &Topology, idx: usize) -> CpuSet {
     }
 }
 
-impl Default for EnergyEval {
-    fn default() -> EnergyEval {
-        EnergyEval {
-            target_path: String::new(),
-            bench_path: String::new(),
-            target_args: String::new(),
-            bench_args: String::new(),
-            num_iter: 1,
-        }
-    }
-}
