@@ -71,7 +71,7 @@ impl CountersProducer {
                         let counter = PerfCounterBuilderLinux::from_intel_event_description(u_rtsc)
                             .for_pid(get_pid())
                             .inherit()
-                            .on_all_cpus()
+                            .on_all_cpus() 
                             .exclude_idle()
                             .finish()
                             .expect("Could not create counter Unhalted Core Counter");

@@ -20,6 +20,7 @@ pub struct Emitter2Influx {
     host: String,
     port: usize,
    // client: Client,
+
 }
 
 

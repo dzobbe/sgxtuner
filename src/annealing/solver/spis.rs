@@ -49,6 +49,7 @@ use std::collections::HashMap;
 use pbr::{ProgressBar, MultiBar};
 use std::thread;
 use std::sync::mpsc::channel;
+use std::time::Duration;
 
 
 #[derive(Debug, Clone)]
@@ -93,7 +94,7 @@ impl Solver for Spis {
      /*   let mut perf_meter = CountersConsumer::new();
         let mut initial_counters = perf_meter.get_current_counters();
         let mut cpu_time = 0.0;*/
-let mut cpu_time = 0.0;
+		let mut cpu_time = 0.0;
         let mut elapsed_steps = common::SharedGenericCounter::new();
         let mut accepted = common::SharedGenericCounter::new();
         let mut subsequent_rej = common::SharedGenericCounter::new();
@@ -132,6 +133,8 @@ let mut cpu_time = 0.0;
         start_time = time::precise_time_ns();
         'outer: loop {
            /* let current_counters = perf_meter.get_current_counters();
+            let current_counters = perf_meter.get_current_counters();
+            println!("Current {:?}",current_counters);
             let cpu_time =
                 perf_meter.get_cpu_exec_time(initial_counters.clone(), current_counters.clone());
             let ipc = perf_meter.get_core_ipc(initial_counters.clone(), current_counters.clone());
@@ -139,6 +142,7 @@ let mut cpu_time = 0.0;
                 perf_meter.get_ipc_utilization(initial_counters.clone(), current_counters.clone());
             let core_utilization =
                 perf_meter.get_core_utilization(initial_counters.clone(), current_counters);*/
+
 
 
             if elapsed_steps.get() > self.max_steps {
@@ -213,10 +217,12 @@ let mut cpu_time = 0.0;
 					
 					let tx_c=tx.clone();
 					
-					
+					//let mut pf=perf_meter.clone();
+					//let mut ic=initial_counters.clone();
 					/************************************************************************************************************/
 		            thread::spawn(move || {
-		            				            			 			
+
+  			 			
 							let mut worker_nrg=master_energy.clone();
 							let mut worker_state=master_state_c.clone();
   					        let range = Range::new(0.0, 1.0);
@@ -225,7 +231,6 @@ let mut cpu_time = 0.0;
 							let mut last_nrg=master_energy.clone();
 							let mut last_state=master_state_c.clone();
 				            loop{
-				            	
 				            	
 				            	pb.message(&format!("TID [{}] - Neigh. Exploration Status - ", core));
 
@@ -317,20 +322,38 @@ let mut cpu_time = 0.0;
             let mut workers_res = threads_res.get_coll();
             let first_elem = workers_res.pop().unwrap();
 
-            master_energy = first_elem.energy;
-            master_state = first_elem.state;
+            let mut best_workers_nrg = first_elem.energy;
+           	let mut best_workers_state = first_elem.state;
 
             for elem in workers_res.iter() {
                 let diff = match self.energy_type {
-                    EnergyType::throughput => elem.energy - master_energy,
-                    EnergyType::latency => -(elem.energy - master_energy), 
+                    EnergyType::throughput => elem.energy - best_workers_nrg,
+                    EnergyType::latency => -(elem.energy - best_workers_nrg), 
                 };
                 if diff > 0.0 {
-                    master_energy = elem.clone().energy;
-                    master_state = elem.clone().state;
+                    best_workers_nrg = elem.clone().energy;
+                    best_workers_state = elem.clone().state;
                 }
             }
-
+            master_energy=best_workers_nrg;
+           	master_state=best_workers_state;
+            
+		 	/*let (master_energy,master_state) = match self.energy_type {
+                EnergyType::throughput => {
+                	if best_workers_nrg > master_energy{
+                		(best_workers_nrg,best_workers_state)
+                	}else{
+                		(master_energy,master_state.clone())
+                	}
+            	},
+                EnergyType::latency =>{
+					if best_workers_nrg < master_energy{
+                		(best_workers_nrg,best_workers_state)
+                	}else{
+                		(master_energy,master_state.clone())
+                	}
+	        	}, 
+            };*/
         }
 
         MrResult {

@@ -39,9 +39,12 @@ pub trait CommandExecutor{
 }
 
 
+
+
 pub struct RemoteCommandExecutor{
 	pub host: String,
 	pub user_4_agent: String,
+
 }
 
 pub struct LocalCommandExecutor;
@@ -104,6 +107,8 @@ impl CommandExecutor for RemoteCommandExecutor{
 		});
 	}
 	
+	
+
 }
 
 
@@ -113,6 +118,7 @@ impl CommandExecutor for LocalCommandExecutor{
 	fn execute_target(&self, target_path: String, target_bin:String, target_args: String, params: &State, signal_ch:  mpsc::Receiver<bool>) {
 		
 		let mut command_2_launch=Command::new(target_path+target_bin.as_str());
+
 	    /// Set the environement variables that will configure the parameters
 	    /// needed by the target application
 	    ///
@@ -158,5 +164,6 @@ impl CommandExecutor for LocalCommandExecutor{
         bench_process.wait().expect("Failed to wait on Benchmark");
 	}
 	
+
 }
 

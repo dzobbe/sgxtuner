@@ -165,13 +165,13 @@ impl EnergyEval {
 		        	remote_cmd_executor.execute_target(self.xml_reader.targ_path().clone(), self.xml_reader.targ_bin().clone(), new_target_args.clone(), &params.clone(),rx);
 	        	}
 	        }
+
 			
             // Wait for target to startup
             thread::sleep(Duration::from_millis(1000));
             // Check if the target is alive
             target_alive = self.check_target_alive(target_addr.clone(), target_port as u16);
             if target_alive == false {
-				//Send signal to target to exit			
 				tx.send(true);
                 break;
             }
@@ -238,6 +238,7 @@ impl EnergyEval {
             meter_proxy_c.reset();
 			//Send signal to target to exit			
 			tx.send(true);
+
 
         }
 

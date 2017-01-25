@@ -12,9 +12,9 @@
     <execution>local</execution>
     <host></host>
     <user></user>
-    <bin>mcperf</bin>
-    <path>/usr/local/bin/</path>
-    <args>-p 12347 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16</args>
+    <bin>memaslap</bin>
+    <path>/home/giovanni/bin/libmemcached-1.0.18/clients/</path>
+    <args>-s 127.0.0.1:12347 -t 20s -c 512 -T 16 -S 20s</args>
     <address>127.0.0.1</address>
     <port>12347</port>
 </bench>
