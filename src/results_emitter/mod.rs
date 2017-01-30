@@ -18,9 +18,8 @@ pub struct Emitter2File {
 
 pub struct Emitter2Influx {
     host: String,
-    port: usize,
+    port: usize, 
    // client: Client,
-
 }
 
 

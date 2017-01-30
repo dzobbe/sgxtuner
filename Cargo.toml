@@ -26,3 +26,4 @@ tokio-core = "0.1"
 wait-timeout = "0.1"
 ssh2="0.3"
 xml-rs="0.3"
+ctrlc = { version = "2.0", features = ["termination"] }

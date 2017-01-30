@@ -60,7 +60,7 @@ impl MeterProxy {
         let mut core = Core::new().unwrap();
         let mut lp = Core::new().unwrap();
         let pool = CpuPool::new(4);
-    	let buffer = Rc::new(RefCell::new(vec![0; 8 * 1024]));
+        let buffer = Rc::new(RefCell::new(vec![0; 64 * 1024]));
         let handle = lp.handle();
 
 
@@ -72,7 +72,6 @@ impl MeterProxy {
         let back_address =
             (b_addr_c + ":" + &self.back_port.to_string()).parse::<SocketAddr>().unwrap();
 
-		println!("front {:?} back {:?}",front_address,back_address);
         let listener = TcpListener::bind(&front_address, &handle).unwrap();
 
 
@@ -80,6 +79,7 @@ impl MeterProxy {
         // incoming connections and spawns a new task for each client which will do
         // the proxy work.
         let clients = listener.incoming().map(move |(socket, addr)| {
+            socket.set_nodelay(true);
             (Client {
                      buffer: buffer.clone(),
                      pool: pool.clone(),
@@ -95,8 +95,7 @@ impl MeterProxy {
             handle.spawn(client.then(move |res| {
                 match res {
                     Ok((a, b)) => println!("proxied {}/{} bytes for {}", a, b, addr),
-                    Err(e) => {;
-                    }
+                    Err(e) => {}
                 }
                 futures::finished(())
             }));
@@ -136,7 +135,7 @@ impl MeterProxy {
 
     pub fn get_num_resp(&self) -> f64 {
         let n_resp = self.num_resp.lock().unwrap();
-        return *n_resp as f64 / 1000000.0f64;
+        return *n_resp;
     }
 }
 
@@ -148,7 +147,7 @@ struct Client {
     handle: Handle,
     num_bytes: Arc<Mutex<f64>>,
     num_resp: Arc<Mutex<f64>>,
-} 
+}
 
 impl Client {
     fn serve(self,
@@ -167,8 +166,7 @@ impl Client {
         // connect to. Note that this `tcp_connect` method itself returns a
         // future resolving to a `TcpStream`, representing how long it takes to
         // initiate a TCP connection to the remote.
-        
-        
+
         let handle = self.handle.clone();
 
         let pair = TcpStream::connect(&back_addr, &handle)
@@ -180,6 +178,7 @@ impl Client {
         let n_resp = self.num_resp.clone();
 
         mybox(pair.and_then(|(back, front)| {
+            back.set_nodelay(true);
             let back = Rc::new(back);
             let front = Rc::new(front);
 
@@ -253,7 +252,7 @@ impl Future for TransferBackFront {
 
 
     fn poll(&mut self) -> Poll<u64, io::Error> {
-        let mut buffer =  vec![0;256];//vec![0;256];//self.buf.borrow_mut();
+        let mut buffer = self.buf.borrow_mut();
 
 
         // Here we loop over the two TCP halves, reading all data from one
@@ -331,7 +330,7 @@ impl Future for TransferFrontBack {
 
 
     fn poll(&mut self) -> Poll<u64, io::Error> {
-        let mut buffer = vec![0;256];//self.buf.borrow_mut();
+        let mut buffer = self.buf.borrow_mut();
 
         // Here we loop over the two TCP halves, reading all data from one
         // connection and writing it to another. The crucial performance aspect
@@ -361,7 +360,7 @@ impl Future for TransferFrontBack {
                 *n_bytes += n as f64;
             }
 
-            { 
+            {
                 let mut n_resp = self.num_resp.lock().unwrap();
                 *n_resp += 1.0;
             }

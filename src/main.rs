@@ -41,6 +41,7 @@ mod energy_eval;
 mod meter_proxy;
 mod results_emitter;
 mod xml_reader;
+mod shared;
 
 type State = HashMap<String, usize>;
 
@@ -61,14 +62,14 @@ fn main() {
 
 
 
-	let xml_reader=xml_reader::XMLReader::new("conf.xml".to_string());
+    let xml_reader = xml_reader::XMLReader::new("conf.xml".to_string());
 
 
     /// Create ParamsConfigurator useful to manage the parameters (or states)
     /// that the simulated annealing algorithm will explore. ParamsConfigurator set initial default parameters
     /// defined in the initial-params.txt input file
     ///
-    let params_config = states_gen::ParamsConfigurator::new("params.conf".to_string());
+    let params_config = states_gen::ParamsConfigurator::new(xml_reader.clone());
 
 
 
@@ -76,9 +77,7 @@ fn main() {
     /// Instantiate the EnergyEval struct needed for start/stop the Target and the Benchmark applications
     /// and then evaluate the energy selected by the user
     ///
-    let energy_eval = energy_eval::EnergyEval {
-		xml_reader: xml_reader.clone(),
-    };
+    let energy_eval = energy_eval::EnergyEval { xml_reader: xml_reader.clone() };
 
 
 
@@ -158,10 +157,7 @@ fn main() {
 
 
 /// Check if the temperature is given by the user or if Tmin and Tmax need to be evaluated
-fn eval_temperature(t_min: Option<f64>,
-                    t_max: Option<f64>,
-                    problem: &mut Problem)
-                    -> (f64, f64) {
+fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Problem) -> (f64, f64) {
     let num_exec = 20;
 
     let min_temp = match t_min {
@@ -208,11 +204,11 @@ fn eval_temperature(t_min: Option<f64>,
 
     return (min_temp, max_temp);
 }
-                    
-                    
-                    
-                    
-                    
+
+
+
+
+
 #[derive(Debug, Clone,RustcDecodable)]
 pub enum ProblemType {
     default,

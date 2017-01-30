@@ -92,10 +92,10 @@ impl Solver for Seqsea {
 
 
         start_time = time::precise_time_ns();
-       /* let mut perf_meter = CountersConsumer::new();
+        /* let mut perf_meter = CountersConsumer::new();
         let mut initial_counters = perf_meter.get_current_counters();*/
 
-		let cpu_time=0.0;
+        let cpu_time = 0.0;
         for elapsed_steps in 0..self.max_steps {
 
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
@@ -130,7 +130,7 @@ impl Solver for Seqsea {
                      Green.paint("[TUNER]"),
                      energy,
                      last_nrg);
-           /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
+            /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
                       Utilization: {:.2}%",
                      Green.paint("[TUNER]"),
                      cpu_time,
@@ -153,61 +153,60 @@ impl Solver for Seqsea {
                     }
                 };
 
-                let accepted_state =
-                    match problem.energy(&next_state, 0, rng.clone()) {
-                        Some(new_energy) => {
-                            last_nrg = new_energy;
+                let accepted_state = match problem.energy(&next_state, 0, rng.clone()) {
+                    Some(new_energy) => {
+                        last_nrg = new_energy;
 
-                            let de = match self.energy_type {
-                                EnergyType::throughput => new_energy - energy,
-                                EnergyType::latency => -(new_energy - energy), 
-                            };
+                        let de = match self.energy_type {
+                            EnergyType::throughput => new_energy - energy,
+                            EnergyType::latency => -(new_energy - energy), 
+                        };
 
-                            if subsequent_rejected > 200 {
-                                println!("{} Convergence Reached!!!", Green.paint("[TUNER]"));
-                                break;
-                            }
-
-                            if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature).exp() {
-                                accepted += 1;
-                                energy = new_energy;
-
-                                if de > 0.0 {
-                                    subsequent_rejected = 0;
-                                }
-
-                                results_emitter.send_update(temperature,
-                                                            elapsed_time,
-                                                            cpu_time,
-                                                            new_energy,
-                                                            &next_state,
-                                                            energy,
-                                                            &next_state,
-                                                            elapsed_steps);
-                                next_state
-
-                            } else {
-                                subsequent_rejected += 1;
-                                results_emitter.send_update(temperature,
-                                                            elapsed_time,
-                                                            cpu_time,
-                                                            new_energy,
-                                                            &next_state,
-                                                            energy,
-                                                            &state,
-                                                            elapsed_steps);
-                                state
-                            }
-
-
+                        if subsequent_rejected > 200 {
+                            println!("{} Convergence Reached!!!", Green.paint("[TUNER]"));
+                            break;
                         }
-                        None => {
-                            println!("{} The current configuration parameters cannot be \
-                                      evaluated. Skip!",
-                                     Green.paint("[TUNER]"));
+
+                        if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature).exp() {
+                            accepted += 1;
+                            energy = new_energy;
+
+                            if de > 0.0 {
+                                subsequent_rejected = 0;
+                            }
+
+                            results_emitter.send_update(temperature,
+                                                        elapsed_time,
+                                                        cpu_time,
+                                                        new_energy,
+                                                        &next_state,
+                                                        energy,
+                                                        &next_state,
+                                                        elapsed_steps);
+                            next_state
+
+                        } else {
+                            subsequent_rejected += 1;
+                            results_emitter.send_update(temperature,
+                                                        elapsed_time,
+                                                        cpu_time,
+                                                        new_energy,
+                                                        &next_state,
+                                                        energy,
+                                                        &state,
+                                                        elapsed_steps);
                             state
                         }
-                    };
+
+
+                    }
+                    None => {
+                        println!("{} The current configuration parameters cannot be evaluated. \
+                                  Skip!",
+                                 Green.paint("[TUNER]"));
+                        state
+                    }
+                };
 
                 accepted_state
             };

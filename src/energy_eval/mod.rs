@@ -23,16 +23,22 @@ use libc::{kill, SIGTERM};
 use State;
 use energy_eval::command_executor::CommandExecutor;
 use xml_reader::XMLReader;
+use shared::Process2Spawn;
+use shared::ProcessPool;
 
 pub mod command_executor;
 
 #[derive(Clone,Debug)]
 pub struct EnergyEval {
-    pub xml_reader: XMLReader, 
+    pub xml_reader: XMLReader,
 }
 
 
 static mut notified: bool = false;
+static base_target_port: usize = 12400;
+static base_bench_port: usize = 12600;
+static mut counter: u16 = 0;
+
 
 
 
@@ -61,36 +67,64 @@ impl SpawnedMeterProxy {
 }
 
 
+struct BenchExecTime(Arc<Mutex<u32>>);
+impl BenchExecTime {
+    fn new() -> Self {
+        BenchExecTime(Arc::new(Mutex::new(0)))
+    }
+    fn set(&self, val: u32) {
+        let mut exec_time = self.0.lock().unwrap();
+        *exec_time = val;
+    }
+    fn get(&self) -> u32 {
+        let mut exec_time = self.0.lock().unwrap();
+        *exec_time
+    }
+}
+
+
+
 lazy_static! {
     static ref spawned_proxies : SpawnedMeterProxy     = {SpawnedMeterProxy::new()};
+	static ref bench_exec_time: BenchExecTime = {BenchExecTime::new()};
     }
 
 
 impl EnergyEval {
-
-
     /**
 	Execute an an instance of the benchmark on the target application for the specific
 	configuration of parameters. The function returns the cost result (in this case the response throughput)
 	that will be used by the simulated annealing algorithm for the energy evaluation
 	**/
-    pub fn execute_test_instance(&mut self,
-                                 params: &State,
-                                 core: usize)
-                                 -> Option<f64> {
+    pub fn execute_test_instance(&mut self, params: &State, core: usize) -> Option<f64> {
+
+        //Extract the target pool
+        let mut targets_pool = self.xml_reader.get_targs_pool();
+        //Extract the bench pool
+        let mut bench_pool = self.xml_reader.get_bench_pool();
+
+
+        let target_x = targets_pool.remove();
+        let bench_x = bench_pool.remove();
 
         // let perf_metrics_handler = PerfMeter::new();
 
         // Modify the target and benchmark arguments in order to start different instances
         // on different ports. The annealing core is given to them. This will be sum
         // to the port number
-        let new_target_args = self.change_port_arg(self.xml_reader.targ_args(), 12400, core);
-        let new_bench_args = self.change_port_arg(self.xml_reader.bench_args(), 12600, core);
+        let new_target_args =
+            target_x.clone().args.replace(target_x.port.as_str(),
+                                          (base_target_port + core).to_string().as_str());
+        let new_bench_args =
+            bench_x.clone().args.replace(bench_x.port.as_str(),
+                                         (base_bench_port + core).to_string().as_str());
 
 
-        let (target_addr, target_port) = self.parse_args(new_target_args.clone());
-        let (bench_addr, bench_port) = self.parse_args(new_bench_args.clone());
-		
+
+        let (target_addr, target_port) = (target_x.clone().address,
+                                          (base_target_port + core) as u16);
+        let (bench_addr, bench_port) = (bench_x.clone().address, (base_bench_port + core) as u16);
+
 
         let mut target_alive: bool = false;
 
@@ -113,131 +147,153 @@ impl EnergyEval {
         for i in 0..self.xml_reader.ann_num_iter() {
             pb.inc();
 
-             
-             
-			/***********************************************************************************************************
-			/// **
+
+
+            /***********************************************************************************************************
+            /// **
             /// Start METER-PROXY, which will interpose between the Target and the
             /// Benchmark apps to extract metrics for the energy evaluation
-            /// * 
-			************************************************************************************************************/            
-			
-   			let mut meter_proxy = MeterProxy::new(target_addr.clone(), target_port, bench_addr.clone(),bench_port);
-          	let mut meter_proxy_c = meter_proxy.clone();
-        	
-            if !spawned_proxies.spawned(bench_port.to_string()){
+            /// *
+            	************************************************************************************************************/
 
-            	spawned_proxies.insert(bench_port.to_string(),meter_proxy.clone());
-            	
-	            thread::spawn(move || {
-	                	meter_proxy.start();
-	            });
-            }else{
-            	let mut sp=spawned_proxies.clone();
-            	meter_proxy=sp.get(bench_port.to_string());
-            	meter_proxy_c=meter_proxy.clone();
+
+            let mut meter_proxy = MeterProxy::new(target_addr.clone(),
+                                                  target_port,
+                                                  bench_addr.clone(),
+                                                  bench_port);
+            let mut meter_proxy_c = meter_proxy.clone();
+
+            if !spawned_proxies.spawned(bench_port.to_string()) {
+                spawned_proxies.insert(bench_port.to_string(), meter_proxy.clone());
+
+                thread::spawn(move || { meter_proxy.start(); });
+            } else {
+                let mut sp = spawned_proxies.clone();
+                meter_proxy = sp.get(bench_port.to_string());
+                meter_proxy_c = meter_proxy.clone();
             }
-          		
-          
-  
-            
-			/***********************************************************************************************************
+
+
+
+
+            /***********************************************************************************************************
             /// **
             /// Launch TARGET Application
-            /// *  
-			************************************************************************************************************/
+            /// *
+            	************************************************************************************************************/
             /// Set the environement variables that will configure the parameters
-	        /// needed by the target application
-	        ///
-	        let host_targ= self.xml_reader.targ_host();
-	        let user_targ=self.xml_reader.targ_host_user();
-    		let (tx, rx) = channel::<bool>();
-	        match self.xml_reader.targ_exec_type(){
-	        	ExecutionType::local  => {
-	        		let local_cmd_executor=command_executor::LocalCommandExecutor;     
-		         	local_cmd_executor.execute_target(self.xml_reader.targ_path().clone(), self.xml_reader.targ_bin().clone(), new_target_args.clone(), &params.clone(),rx);
-	        	}
-	        	ExecutionType::remote => {
-			        let remote_cmd_executor=command_executor::RemoteCommandExecutor{
-	        					host:host_targ,
-								user_4_agent: user_targ,
-							};
-		        	remote_cmd_executor.execute_target(self.xml_reader.targ_path().clone(), self.xml_reader.targ_bin().clone(), new_target_args.clone(), &params.clone(),rx);
-	        	}
-	        }
+            /// needed by the target application
+            ///
+            let (tx, rx) = channel::<bool>();
 
-			
+
+            match target_x.clone().execution_type {
+                ExecutionType::local => {
+                    let local_cmd_executor = command_executor::LocalCommandExecutor;
+                    local_cmd_executor.execute_target(target_x.path.clone(),
+                                                      target_x.bin.clone(),
+                                                      new_target_args.clone(),
+                                                      &params.clone(),
+                                                      rx);
+                }
+                ExecutionType::remote => {
+                    let remote_cmd_executor = command_executor::RemoteCommandExecutor {
+                        host: target_x.clone().host,
+                        user_4_agent: target_x.clone().user,
+                    };
+                    remote_cmd_executor.execute_target(target_x.path.clone(),
+                                                       target_x.bin.clone(),
+                                                       new_target_args.clone(),
+                                                       &params.clone(),
+                                                       rx);
+                }
+            }
+
+
             // Wait for target to startup
             thread::sleep(Duration::from_millis(1000));
             // Check if the target is alive
             target_alive = self.check_target_alive(target_addr.clone(), target_port as u16);
             if target_alive == false {
-				tx.send(true);
+                tx.send(true);
                 break;
             }
- 
- 
- 			let start_time = time::precise_time_ns();
-	  
-			/***********************************************************************************************************
+
+
+            let start_time = time::precise_time_ns();
+
+            /***********************************************************************************************************
             /// **
             /// Launch BENCHMARK Application and measure execution time
             /// *
-			************************************************************************************************************/ 
-			let host_bench= self.xml_reader.bench_host();
-			let user_bench=self.xml_reader.bench_host_user();
-			match self.xml_reader.bench_exec_type(){
-	        	ExecutionType::local  => {
-	        		let local_cmd_executor=command_executor::LocalCommandExecutor;    
-		         	local_cmd_executor.execute_bench(self.xml_reader.bench_path().clone(), self.xml_reader.bench_bin().clone(), new_bench_args.clone());
-	        	}
-	        	ExecutionType::remote => {
-			        let remote_cmd_executor=command_executor::RemoteCommandExecutor{
-	        					host: host_bench,
-								user_4_agent: user_bench,
-							};
-		        	remote_cmd_executor.execute_bench(self.xml_reader.bench_path().clone(), self.xml_reader.bench_bin().clone(), new_bench_args.clone());
-	        	}
-	        }
-	    	let end_time = time::precise_time_ns();
-		    let elapsed_ns: f64 = (end_time - start_time) as f64;
-		    let elapsed_time = elapsed_ns / 1000000000.0f64;
+            	************************************************************************************************************/
 
-  
-			
-            
 
-			/***********************************************************************************************************
+            match bench_x.clone().execution_type {
+                ExecutionType::local => {
+                    let local_cmd_executor = command_executor::LocalCommandExecutor;
+                    local_cmd_executor.execute_bench(bench_x.path.clone(),
+                                                     bench_x.bin.clone(),
+                                                     new_bench_args.clone());
+                }
+                ExecutionType::remote => {
+                    let remote_cmd_executor = command_executor::RemoteCommandExecutor {
+                        host: bench_x.clone().host,
+                        user_4_agent: bench_x.clone().user,
+                    };
+                    remote_cmd_executor.execute_bench(bench_x.path.clone(),
+                                                      bench_x.bin.clone(),
+                                                      new_bench_args.clone());
+                }
+            }
+            let end_time = time::precise_time_ns();
+            let elapsed_ns: f64 = (end_time - start_time) as f64;
+            let elapsed_time = elapsed_ns / 1000000000.0f64;
+
+
+
+
+
+            /***********************************************************************************************************
             /// **
             /// ENERGY Evaluation
             /// *
-			************************************************************************************************************/    
+            	************************************************************************************************************/
+
             let nrg: f64 = match self.xml_reader.ann_energy() {
                 EnergyType::throughput => {
                     // Throughput Evaluation
                     let num_bytes = meter_proxy_c.get_num_kbytes_rcvd() as f64;
                     let resp_rate = num_bytes / elapsed_time;
-                 	
+
+                    println!("Num bytes: {} ", num_bytes * 1024.0f64);
+
+                    println!("Num resp: {} - Resp/s: {}",
+                             meter_proxy_c.get_num_resp(),
+                             meter_proxy_c.get_num_resp() / elapsed_time);
+
                     resp_rate
                 }
                 EnergyType::latency => {
                     // Latency Evaluation
-                    meter_proxy_c.get_num_resp() 
-                  
+                    meter_proxy_c.get_num_resp()
+
                 }
             };
             nrg_vec.push(nrg);
-            
-            
-            
-			/************************************************************************************************************
+
+
+
+            /************************************************************************************************************
             /// **
             /// Clean Resources
             /// *
-			*************************************************************************************************************/
+            	*************************************************************************************************************/
             meter_proxy_c.reset();
-			//Send signal to target to exit			
-			tx.send(true);
+            //Send signal to target to exit
+            targets_pool.push(target_x.clone());
+            bench_pool.push(bench_x.clone());
+            tx.send(true);
 
 
         }
@@ -295,61 +351,31 @@ impl EnergyEval {
         };
         return target_alive;
     }
-    /// *********************************************************************************************************
-
-    fn parse_args(&self, args_str: String) -> (String, u16) {
-        let mut args: Vec<&str> = args_str.split_whitespace().collect();
-
-        let addr = match (&mut args)
-            .into_iter()
-            .position(|&mut x| {
-                x == "-l" || x == "--address" || x == "-h" || x == "--host" || x == "--server"
-            }) {
-            Some(index) => args[index + 1].parse().unwrap(),
-            None => {
-                unsafe {
-                    if notified == false {
-                        println!("In: {:?} - Address not found. Using 127.0.0.1", args_str);
-                        notified = true;
-                    }
-                }
-                "127.0.0.1".to_string()
-            }
-        };
-
-        let port = match (&mut args)
-            .into_iter()
-            .position(|&mut x| x == "-p" || x == "--port") {
-            Some(index) => args[index + 1].parse().unwrap(),
-            None => {12600}
-        }; 
-
-        return (addr, port);
-
-    }
-    /// *********************************************************************************************************
 
 
-    fn change_port_arg(&self, args_str: String, base_value: usize, val_2_add: usize) -> String {
-        let args = args_str.clone();
-        let mut new_args_string = "".to_string();
-        let mut gotit = false;
-
-        let vec_args: Vec<&str> = args.split_whitespace().collect();
-        for arg in vec_args {
-            if gotit {
-                let mut new_port_val = (base_value + val_2_add).to_string();
-                new_args_string = new_args_string + " " + new_port_val.as_str();
-                gotit = false;
-            } else {
-                new_args_string = new_args_string + " " + arg;
-            }
-            if arg == "-p" || arg == "--port" {
-                gotit = true;
-            }
-        }
-        return new_args_string;
-    }
+    /*fn create_ssh_tunnel(&self,core: usize){
+    	
+    	let host=self.xml_reader.targ_host();
+    	let temp_host_vec: Vec<&str>=host.split(":").collect();
+    	let remote_host_addr=temp_host_vec[0];
+    	let remote_host_port=temp_host_vec[1];
+				
+		let host_4_cmd=format!("{}@{}",self.xml_reader.targ_host_user(),remote_host_addr);
+		let addr_2_tunnel=format!("{}:localhost:{}",(base_target_port+core).to_string().as_str(),(base_target_port+core).to_string().as_str());
+		
+		let mut cmd_sshtunnel=Command::new("ssh")
+							    .arg("-f")
+							    .arg(host_4_cmd)
+							    .arg("-p")
+							    .arg(remote_host_port)
+							    .arg("-L")
+							    .arg(addr_2_tunnel)
+							    .arg("-N")
+							    .spawn()
+							    .expect("ls command failed to start");
+	            	
+		    	
+    }*/
 }
 
 /// Load the CpuSet for the given core index.
@@ -360,4 +386,3 @@ fn cpuset_for_core(topology: &Topology, idx: usize) -> CpuSet {
         None => panic!("No Core found with id {}", idx),
     }
 }
-

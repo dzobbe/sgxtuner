@@ -80,9 +80,7 @@ impl Problem {
 
         let nrg = match self.problem_type {
 
-            ProblemType::default => {
-                self.energy_evaluator.execute_test_instance(state, id_thread)
-            }
+            ProblemType::default => self.energy_evaluator.execute_test_instance(state, id_thread),
 
             ProblemType::rastr => {
                 Some(10_f64 * p +

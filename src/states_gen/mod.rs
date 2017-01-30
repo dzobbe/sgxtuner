@@ -1,26 +1,23 @@
 
 use rand;
-use std::io::BufReader;
 use std::error::Error;
-use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::collections::{HashMap, HashSet};
 use rand::Rng;
 use ansi_term::Colour::{Yellow, Red};
 use std::boxed::Box;
+use xml_reader::XMLReader;
 use State;
+use shared::Parameter;
 
-#[derive(Clone,Debug,RustcEncodable)]
+#[derive(Clone,Debug)]
 pub struct ParamsConfigurator {
+    pub xml_reader: XMLReader,
+
     pub default_param: State,
-    // Path of the file where the parameters configuration is
-    pub param_file_path: String,
     // HashMap that stores the space state of each parameter
     pub params_space_state: HashMap<String, Vec<usize>>,
-    // Indexes of parameters. It is needed to have an order of the parameters
-    // for the insertion of new states into the visited_params_state.
-    pub params_indexes: HashMap<String, u8>,
     // Visited parameters list. Saved in heap for memory space reasons
     pub visited_params_states: Box<HashSet<String>>,
 }
@@ -28,12 +25,11 @@ pub struct ParamsConfigurator {
 static initial_decreasing_factor: f64 = 0.6;
 
 impl ParamsConfigurator {
-    pub fn new(file_path: String) -> ParamsConfigurator {
+    pub fn new(reader: XMLReader) -> ParamsConfigurator {
         let mut params_configurator = ParamsConfigurator {
+            xml_reader: reader,
             default_param: HashMap::new(),
-            param_file_path: file_path,
             params_space_state: HashMap::new(),
-            params_indexes: HashMap::new(),
             visited_params_states: Box::new(HashSet::new()),
         };
         params_configurator.init();
@@ -52,80 +48,33 @@ impl ParamsConfigurator {
 	**/
     pub fn init(&mut self) {
 
-        let f = self.param_file_path.clone();
-        // Create a path to the desired file
-        let path = Path::new(&f);
-        let display = path.display();
 
-        // Open the path in read-only mode, returns `io::Result<File>`
-        let file = match File::open(&path) {
-            Err(why) => panic!("couldn't open {}: {}", display, why.description()),
-            Ok(file) => file,
-        };
-
-
+        let musl_params_collection = self.xml_reader.get_musl_params();
         let mut initial_params_state: State = HashMap::new();
-        let file_reader = BufReader::new(&file);
-        let mut index = 0;
-        for (_, line) in file_reader.lines().enumerate() {
-            let topline = line.unwrap();
-            let mut topsplit = topline.split(":");
 
-            let (var_name, var_value, var_lbound, var_ubound, var_step);
 
-            match topsplit.next() {
-                Some(x) => var_name = x,
-                None => break,
-            }
-
-            match topsplit.next() {
-                Some(subline) => {
-                    let mut subsplit = subline.split(",");
-                    match subsplit.next() {
-                        Some(x) => var_lbound = str::replace(x, "[", ""),
-                        None => break,
-                    }
-                    match subsplit.next() {
-                        Some(x) => var_ubound = x,
-                        None => break,
-                    }
-                    match subsplit.next() {
-                        Some(x) => var_step = str::replace(x, "]", ""),
-                        None => break,		                		
-                    }
-                } 
-                None => break,
-            }
-
-            match topsplit.next() {
-                Some(x) => var_value = x,
-                None => break,
-            }
-
+        for param in musl_params_collection.iter() {
 
 
             let space_state_elems =
-                ParamsConfigurator::get_space_state(var_lbound.parse::<usize>().unwrap(),
-                                                    var_ubound.parse::<usize>().unwrap(),
-                                                    var_step.parse::<usize>().unwrap());
+                ParamsConfigurator::get_space_state(param.min, param.max, param.step);
             let space_state_elems_c = space_state_elems.clone();
 
             self.params_space_state
-                .insert(var_name.to_string(), space_state_elems);
-            self.params_indexes.insert(var_name.to_string(), index);
-            index = index + 1;
-
-            initial_params_state.insert(var_name.to_string(), var_value.parse::<usize>().unwrap());
+                .insert(param.clone().name, space_state_elems);
 
 
-            println!("{} {:?}", Yellow.paint("Input Parameter ==> "), var_name);
+            initial_params_state.insert(param.clone().name, param.default);
+
+
+            println!("{} {:?}", Yellow.paint("Input Parameter ==> "), param.name);
 
             println!("{} [{:?},{:?},{:?}] - {} {:?} ",Yellow.paint("Space State ==> "),
-                     var_lbound,
-                     var_ubound,
-                     var_step,
+                     param.min,
+                     param.max,
+                     param.step,
                      Yellow.paint("Default Value ==> "),
-                     var_value,
+                     param.default,
                      );
             println!("{} {:?}",
                      Yellow.paint("Elements ==> "),
@@ -200,8 +149,8 @@ impl ParamsConfigurator {
         let period_of_variation: f64 = max_anneal_steps as f64 /
                                        ((initial_decreasing_factor as f64) * 10.0);
         let decreasing_factor: f64 = initial_decreasing_factor -
-                                     ((current_anneal_step as f64 / period_of_variation).floor()) /
-                                     10.0;
+                                     ((current_anneal_step as f64 / period_of_variation)
+            .floor()) / 10.0;
         // Evaluate the number of varying parameters based on factor evaluated before
         let mut num_params_2_vary = (params_state.len() as f64 * decreasing_factor) as usize;
 

@@ -80,21 +80,21 @@ impl Solver for Spis {
         let mut start_time = time::precise_time_ns();
         let mut rng = thread_rng();
 
+        let mut rng_c = rng.clone();
         let mut master_state = problem.initial_state();
-        let mut master_energy =
-            match problem.energy(&master_state.clone(), 0, rng) {
-                Some(nrg) => nrg,
-                None => panic!("The initial configuration does not allow to calculate the energy"),
-            };
+        let mut master_energy = match problem.energy(&master_state.clone(), 0, rng) {
+            Some(nrg) => nrg,
+            None => panic!("The initial configuration does not allow to calculate the energy"),
+        };
 
         let mut elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
         let time_2_complete_hrs = ((elapsed_time as f64) * self.max_steps as f64) / 3600.0;
 
 
-     /*   let mut perf_meter = CountersConsumer::new();
+        /*   let mut perf_meter = CountersConsumer::new();
         let mut initial_counters = perf_meter.get_current_counters();
         let mut cpu_time = 0.0;*/
-		let mut cpu_time = 0.0;
+        let mut cpu_time = 0.0;
         let mut elapsed_steps = common::SharedGenericCounter::new();
         let mut accepted = common::SharedGenericCounter::new();
         let mut subsequent_rej = common::SharedGenericCounter::new();
@@ -108,23 +108,20 @@ impl Solver for Spis {
         let mut results_emitter = Emitter2File::new();
         // Spawn the thread that will take care of writing results into a CSV file
         let (elapsed_steps_c, temperature_c) = (elapsed_steps.clone(), temperature.clone());
-        thread::spawn(move || {
-            loop {
-                elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
-                match rx.recv() {
-                    Ok(res) => {
-                        results_emitter.send_update(temperature_c.get(),
-                                                    elapsed_time,
-                                                    cpu_time,
-                                                    res.last_nrg,
-                                                    &res.last_state,
-                                                    res.best_nrg,
-                                                    &res.best_state,
-                                                    elapsed_steps_c.get());
-                    }
-                    Err(e) => {;
-                    } 
+        thread::spawn(move || loop {
+            elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+            match rx.recv() {
+                Ok(res) => {
+                    results_emitter.send_update(temperature_c.get(),
+                                                elapsed_time,
+                                                cpu_time,
+                                                res.last_nrg,
+                                                &res.last_state,
+                                                res.best_nrg,
+                                                &res.best_state,
+                                                elapsed_steps_c.get());
                 }
+                Err(e) => {} 
             }
         });
 
@@ -132,7 +129,7 @@ impl Solver for Spis {
         /// *********************************************************************************************************
         start_time = time::precise_time_ns();
         'outer: loop {
-           /* let current_counters = perf_meter.get_current_counters();
+            /* let current_counters = perf_meter.get_current_counters();
             let current_counters = perf_meter.get_current_counters();
             println!("Current {:?}",current_counters);
             let cpu_time =
@@ -149,7 +146,7 @@ impl Solver for Spis {
                 break 'outer;
             }
 
-            if subsequent_rej.get() > 200 {
+            if subsequent_rej.get() > 400 {
                 println!("{} Convergence Reached!!!", Green.paint("[TUNER]"));
                 break 'outer;
             }
@@ -175,7 +172,7 @@ impl Solver for Spis {
             println!("{} Accepted Energy: {:.4}",
                      Green.paint("[TUNER]"),
                      master_energy);
-           /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
+            /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
                       Utilization: {:.2}%",
                      Green.paint("[TUNER]"),
                      cpu_time,
@@ -199,7 +196,7 @@ impl Solver for Spis {
 
 
             /// *********************************************************************************************************
-            let handles: Vec<_> = (0..num_cores).map(|core| {
+            let handles: Vec<_> = (0..3).map(|core| {
 	 				let mut pb=mb.create_bar(neigh_pool.size()/num_cores as u64);
  			        pb.show_message = true;
 		            					
@@ -323,7 +320,7 @@ impl Solver for Spis {
             let first_elem = workers_res.pop().unwrap();
 
             let mut best_workers_nrg = first_elem.energy;
-           	let mut best_workers_state = first_elem.state;
+            let mut best_workers_state = first_elem.state;
 
             for elem in workers_res.iter() {
                 let diff = match self.energy_type {
@@ -335,25 +332,25 @@ impl Solver for Spis {
                     best_workers_state = elem.clone().state;
                 }
             }
-            master_energy=best_workers_nrg;
-           	master_state=best_workers_state;
-            
-		 	/*let (master_energy,master_state) = match self.energy_type {
-                EnergyType::throughput => {
-                	if best_workers_nrg > master_energy{
-                		(best_workers_nrg,best_workers_state)
-                	}else{
-                		(master_energy,master_state.clone())
-                	}
-            	},
-                EnergyType::latency =>{
-					if best_workers_nrg < master_energy{
-                		(best_workers_nrg,best_workers_state)
-                	}else{
-                		(master_energy,master_state.clone())
-                	}
-	        	}, 
-            };*/
+
+            let de = match self.energy_type {
+                EnergyType::throughput => best_workers_nrg - master_energy,
+                EnergyType::latency => -(best_workers_nrg - master_energy), 
+            };
+            let range = Range::new(0.0, 1.0);
+
+            if de > 0.0 || range.ind_sample(&mut rng_c) <= (de / temperature.get()).exp() {
+                master_energy = best_workers_nrg;
+                master_state = best_workers_state;
+                if de > 0.0 {
+                    subsequent_rej.reset();
+                }
+
+            } else {
+                subsequent_rej.increment();
+            }
+
+
         }
 
         MrResult {
