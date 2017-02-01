@@ -164,8 +164,6 @@ impl XMLReader {
                         };
                         musl_p.push(musl_parameter);
                     }
-                    
-                   
 
                 }
 
@@ -176,9 +174,23 @@ impl XMLReader {
                 _ => {}
             }
         }
-        
+         
 
-        
+		if  ann_p.get("version").unwrap().to_string() != "seqsea" {
+			
+			while targ_p.size() != ann_p.get("workers").unwrap().to_string().parse::<usize>().unwrap(){
+				println!("S {}",targ_p.size());
+				let copy_elem=targ_p.get("0".to_string());
+				targ_p.push(copy_elem,targ_p.size().to_string());
+			}
+			
+			while bench_p.size() != ann_p.get("workers").unwrap().to_string().parse::<usize>().unwrap(){
+				let copy_elem=bench_p.get("0".to_string());
+				bench_p.push(copy_elem,bench_p.size().to_string());
+			}
+			
+		}
+         
         XMLReader {
             targets_collection: targ_p,
             benchs_collection: bench_p,

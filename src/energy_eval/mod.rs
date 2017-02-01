@@ -199,21 +199,15 @@ impl EnergyEval {
             /// needed by the target application
             ///
             let (tx, rx) = channel::<bool>();
-        	let mut params_c=params.clone();
-        	let target_x_c=target_x.clone();
-			let new_target_args=new_target_args.clone();
 
             match target_x.clone().execution_type {
                 ExecutionType::local => {
-
-                    thread::spawn(move || {
-		                    let local_cmd_executor = command_executor::LocalCommandExecutor;	
-                    		local_cmd_executor.execute_target(target_x_c.path.clone(),
-                                                      target_x_c.bin.clone(),
-                                                      new_target_args,
-                                                      &params_c,
-                                                      rx);
-                    		});
+	                    let local_cmd_executor = command_executor::LocalCommandExecutor;	
+                		local_cmd_executor.execute_target(target_x.path.clone(),
+                                                  target_x.bin.clone(),
+                                                  new_target_args.clone(),
+                                                  &params,
+                                                  rx);
                 }
                 ExecutionType::remote => {
                     let remote_cmd_executor = command_executor::RemoteCommandExecutor {

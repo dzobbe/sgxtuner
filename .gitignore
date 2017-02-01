@@ -4,3 +4,4 @@ target
 *.rs.bk
 *.csv
 *.log
+conf.xml

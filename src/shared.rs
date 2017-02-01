@@ -43,4 +43,15 @@ impl ProcessPool {
         let res = (*collection).remove(&id).unwrap().clone();
         res
     }
+    
+ 	pub fn get(&mut self, id: String) -> Process2Spawn {
+        let mut collection = self.0.lock().unwrap();
+        let res = (*collection).get(&id).unwrap().clone();
+        res
+    }
+    
+    pub fn size(&self) -> usize {
+        let mut collection = self.0.lock().unwrap();
+        (*collection).len()
+    }
 }

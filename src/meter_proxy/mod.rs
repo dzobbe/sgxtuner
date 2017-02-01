@@ -17,9 +17,11 @@ use tokio_core::net::{TcpStream, TcpListener};
 use tokio_core::io::{Io, read_exact, write_all, Window};
 use std::sync::{Arc, Mutex, RwLock};
 use State;
+use time;
 
 lazy_static! {
     static ref ERROR: Arc<Mutex<bool>>	= Arc::new(Mutex::new(false));
+    static ref TIMESTAT: SharedGenericCounter = SharedGenericCounter::new();
 }
 
 #[derive(Clone, Debug)]
@@ -31,6 +33,32 @@ pub struct MeterProxy {
     pub num_bytes: Arc<Mutex<f64>>,
     pub num_resp: Arc<Mutex<f64>>,
 }
+
+
+/// *********************************************************************************************************
+#[derive(Debug, Clone)]
+pub struct SharedGenericCounter(Arc<Mutex<usize>>);
+impl SharedGenericCounter {
+    pub fn new() -> Self {
+        SharedGenericCounter(Arc::new(Mutex::new(0)))
+    }
+
+    pub fn get(&self) -> usize {
+        let rejected = self.0.lock().unwrap();
+        *rejected
+    }
+
+    pub fn reset(&self) {
+        let mut rejected = self.0.lock().unwrap();
+        *rejected = 0;
+    }
+
+    pub fn add(&self, val: usize) {
+        let mut steps = self.0.lock().unwrap();
+        *steps = *steps + val;
+    }
+}
+/// *********************************************************************************************************
 
 
 impl MeterProxy {
@@ -262,13 +290,13 @@ impl Future for TransferBackFront {
         // only be temporarily used in a small window for all connections.
         loop {
             let read_ready = self.reader.poll_read().is_ready();
-
+			
             let write_ready = self.writer.poll_write().is_ready();
             if !read_ready || !write_ready {
                 return Ok(Async::NotReady);
             }
 
-
+				
             let n = try_nb!((&*self.reader).read(&mut buffer));
             if n == 0 {
                 try!(self.writer.shutdown(Shutdown::Write));
@@ -339,13 +367,13 @@ impl Future for TransferFrontBack {
         // only be temporarily used in a small window for all connections.
         loop {
             let read_ready = self.reader.poll_read().is_ready();
-
+			
             let write_ready = self.writer.poll_write().is_ready();
             if !read_ready || !write_ready {
                 return Ok(Async::NotReady);
             }
-
-
+				
+			
             let n = try_nb!((&*self.reader).read(&mut buffer));
             if n == 0 {
                 try!(self.writer.shutdown(Shutdown::Write));

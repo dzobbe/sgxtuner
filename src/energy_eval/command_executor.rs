@@ -23,6 +23,7 @@ pub trait CommandExecutor {
     fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String);
 }
 
+static mut first : bool = true;
 
 #[derive(Clone)]
 pub struct RemoteCommandExecutor {
@@ -113,25 +114,29 @@ impl CommandExecutor for LocalCommandExecutor {
                       params: &State,
                       signal_ch: mpsc::Receiver<bool>) {
 
-        let mut command_2_launch = Command::new(target_path + target_bin.as_str());
+		let params_c=params.clone();
 
-        /// Set the environement variables that will configure the parameters
-        /// needed by the target application
-        ///
-        for (param_name, param_value) in params.iter() {
-            command_2_launch.env(param_name.to_string(), param_value.to_string());
-        }
+        thread::spawn(move || {
 
-
-        let mut vec_args: Vec<&str> = target_args.split_whitespace().collect();
-        let mut target_process = command_2_launch.args(vec_args.as_ref())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to execute Target!");
-
-        signal_ch.recv();
-
-        target_process.kill().expect("Target Process wasn't running");
+	        let mut command_2_launch = Command::new(target_path + target_bin.as_str());
+	
+	        /// Set the environement variables that will configure the parameters
+	        /// needed by the target application
+	        ///
+	        for (param_name, param_value) in params_c.iter() {
+	            command_2_launch.env(param_name.to_string(), param_value.to_string());
+	        }
+	
+	        let mut vec_args: Vec<&str> = target_args.split_whitespace().collect();
+	        let mut target_process = command_2_launch.args(vec_args.as_ref())
+	            .stdout(Stdio::piped())
+	            .spawn()
+	            .expect("Failed to execute Target!");
+	
+	        signal_ch.recv();
+	
+	        target_process.kill().expect("Target Process wasn't running");
+        });
 
     }
 
@@ -144,19 +149,24 @@ impl CommandExecutor for LocalCommandExecutor {
             .spawn()
             .expect("Failed to execute Benchmark!");
         let pid = bench_process.id();
-        /*thread::spawn(move || { 
-        		 if bench_exec_time.get() != 0{
- 	            	thread::sleep(Duration::from_millis((bench_exec_time.get()*4) as u64));
-            		 unsafe{kill(pid as i32, SIGTERM);}
-        		 }
-    	});*/
+        thread::spawn(move || { 
+        		 unsafe{
+        		 	if !first {
+ 	            		thread::sleep(Duration::from_millis((bench_exec_time.get()*4) as u64));
+            		 	kill(pid as i32, SIGTERM);
+    		 		}
+    		 	}
+    	});
+        bench_process.wait().expect("Failed to wait on Benchmark");
 
+		
         let end_time = time::precise_time_ns();
         
         let elapsed_ns: f64 = (end_time - start_time) as f64;
         let elapsed_time = elapsed_ns / 1000000000.0f64;
 
         bench_exec_time.set((elapsed_ns / 1000000.0f64) as u32);
-        bench_process.wait().expect("Failed to wait on Benchmark");
+		unsafe{first=false;};
+
     }
 }

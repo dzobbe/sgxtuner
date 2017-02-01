@@ -11,26 +11,6 @@
             <port>14200</port>
     </m1>
 
-	<m2>
-            <execution>local</execution>
-            <host></host>
-            <user></user>
-            <bin>memcached</bin>
-            <path>/home/ubuntu/TUD-Work/scripts/build/build/bin/</path>
-            <args>-l 127.0.0.1 -p 14200 -t 8</args>
-            <address>127.0.0.1</address>
-            <port>14200</port>
-   </m2>
-	<m3>
-	    <execution>local</execution>
-	    <host></host>
-	    <user></user>
-	    <bin>memcached</bin>
-	    <path>/home/ubuntu/TUD-Work/scripts/build/build/bin/</path>
-	    <args>-l 127.0.0.1 -p 14200 -t 8</args>
-	    <address>127.0.0.1</address>
-	    <port>14200</port>
-   	</m3>
 </target>
 
 <bench>
@@ -43,29 +23,7 @@
             <args>-p 12347 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16</args>
             <address>127.0.0.1</address>
             <port>12347</port>
-     </m1>
-
-	<m2>
-            <execution>local</execution>
-            <host></host>
-            <user></user>
-            <bin>mcperf</bin>
-            <path>/usr/local/bin/</path>
-            <args>-p 12347 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16</args>
-            <address>127.0.0.1</address>
-            <port>12347</port>
-      </m2>
-
-	<m3>
-            <execution>local</execution>
-            <host></host>
-            <user></user>
-            <bin>mcperf</bin>
-            <path>/usr/local/bin/</path>
-            <args>-p 12347 --linger=0 --timeout=5 --conn-rate=1000 --call-rate=1000 --num-calls=10 --num-conns=1000 --sizes=u1,16</args>
-            <address>127.0.0.1</address>
-            <port>12347</port>
-        </m3>
+      </m1>
 
 </bench>
 
@@ -77,7 +35,7 @@
     <energy>throughput</energy>
     <cooling>exponential</cooling>
     <problem>default</problem>
-    <version>seqsea</version>
+    <version>prsa</version>
     <workers>3</workers>
 </annealing>
 

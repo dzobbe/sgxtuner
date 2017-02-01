@@ -82,7 +82,6 @@ impl Solver for Prsa {
             common::Temperature::new(self.max_temp, cooler.clone(), self.cooling_schedule.clone());
         let threads_res = common::ThreadsResults::new();
 
-        let mut mb = MultiBar::new();
         /// *********************************************************************************************************
         let mut start_time = time::precise_time_ns();
         let mut final_best_res = MrResult {
@@ -90,6 +89,7 @@ impl Solver for Prsa {
             state: HashMap::new(),
         };
         'outer: loop {
+        	let mut mb = MultiBar::new();
 
             if elapsed_steps.get() > self.max_steps {
                 break 'outer;
