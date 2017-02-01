@@ -96,10 +96,15 @@ impl XMLReader {
                     if found_bench == true && name.to_string() != tag.to_string() {
                         let exec_type_enum: ExecutionType =
                             bench_p_x.get("execution").unwrap().to_string().parse().unwrap();
+                            
+                        let (host, user)=match exec_type_enum{
+                        	ExecutionType::local  =>("".to_string(),"".to_string()),
+                        	ExecutionType::remote =>(bench_p_x.get("host").unwrap().to_string(), bench_p_x.get("user").unwrap().to_string()),
+                        };
                         let mut bench_2_spawn = Process2Spawn {
                             execution_type: exec_type_enum,
-                            host: bench_p_x.get("host").unwrap().to_string(),
-                            user: bench_p_x.get("user").unwrap().to_string(),
+                            host: host,
+                            user: user,
                             bin: bench_p_x.get("bin").unwrap().to_string(),
                             path: bench_p_x.get("path").unwrap().to_string(),
                             args: bench_p_x.get("args").unwrap().to_string(),
@@ -113,10 +118,15 @@ impl XMLReader {
                     if found_targ == true && name.to_string() != tag.to_string() {
                         let exec_type_enum: ExecutionType =
                             targ_p_x.get("execution").unwrap().to_string().parse().unwrap();
+                        let (host, user)=match exec_type_enum{
+                        	ExecutionType::local  =>("".to_string(),"".to_string()),
+                        	ExecutionType::remote =>(targ_p_x.get("host").unwrap().to_string(), targ_p_x.get("user").unwrap().to_string()),
+                        };
+                        
                         let mut targ_2_spawn = Process2Spawn {
                             execution_type: exec_type_enum,
-                            host: targ_p_x.get("host").unwrap().to_string(),
-                            user: targ_p_x.get("user").unwrap().to_string(),
+                            host: host,
+                            user: user,
                             bin: targ_p_x.get("bin").unwrap().to_string(),
                             path: targ_p_x.get("path").unwrap().to_string(),
                             args: targ_p_x.get("args").unwrap().to_string(),
@@ -166,6 +176,8 @@ impl XMLReader {
                 _ => {}
             }
         }
+        
+
         
         XMLReader {
             targets_collection: targ_p,
@@ -228,6 +240,11 @@ impl XMLReader {
     pub fn ann_max_temp(&self) -> Option<f64> {
         return Some(self.ann_params.get("max_temp").unwrap().to_string().parse::<f64>().unwrap());
     }
+    
+    pub fn ann_workers(&self) -> usize  {
+        return self.ann_params.get("workers").unwrap().to_string().parse::<usize>().unwrap();
+    }
+    
     pub fn ann_energy(&self) -> EnergyType {
         let energy_type: EnergyType =
             self.ann_params.get("energy").unwrap().to_string().parse().unwrap();

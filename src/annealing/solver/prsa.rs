@@ -62,7 +62,7 @@ pub struct Prsa {
 }
 
 impl Solver for Prsa {
-    fn solve(&mut self, problem: &mut Problem) -> MrResult {
+    fn solve(&mut self, problem: &mut Problem, num_workers: usize) -> MrResult {
 
         let cooler = StepsCooler {
             max_steps: self.max_steps,
@@ -70,8 +70,6 @@ impl Solver for Prsa {
             max_temp: self.max_temp,
         };
 
-        // Get num_cores initial different populations
-        let num_cores = common::get_num_cores();
 
         // Generate a Population of specified size with different configurations randomly selected
         // from the space state
@@ -112,13 +110,13 @@ impl Solver for Prsa {
             // Shuffle pointers of population elements
             population.shuffle();
 
-            let mut th_handlers: Vec<JoinHandle<_>> = Vec::with_capacity(num_cores);
+            let mut th_handlers: Vec<JoinHandle<_>> = Vec::with_capacity(num_workers);
 
-            // Divide the population in num_cores chunks
-            let chunk_size = (self.population_size as f64 / num_cores as f64).floor() as usize;
+            // Divide the population in num_workers chunks
+            let chunk_size = (self.population_size as f64 / num_workers as f64).floor() as usize;
             let mut chunks: Vec<Vec<State>> =
-                (0..num_cores).map(|_| Vec::with_capacity(num_cores)).collect();
-            for i in 0..num_cores {
+                (0..num_workers).map(|_| Vec::with_capacity(num_workers)).collect();
+            for i in 0..num_workers {
                 for j in 0..chunk_size {
                     match population.pop() {
                         Some(v) => {
@@ -130,7 +128,7 @@ impl Solver for Prsa {
             }
 
 
-            for core in 0..num_cores {
+            for core in 0..num_workers {
 
                 let sub_population = chunks[core].clone();
 

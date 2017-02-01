@@ -199,16 +199,21 @@ impl EnergyEval {
             /// needed by the target application
             ///
             let (tx, rx) = channel::<bool>();
-
+        	let mut params_c=params.clone();
+        	let target_x_c=target_x.clone();
+			let new_target_args=new_target_args.clone();
 
             match target_x.clone().execution_type {
                 ExecutionType::local => {
-                    let local_cmd_executor = command_executor::LocalCommandExecutor;
-                    local_cmd_executor.execute_target(target_x.path.clone(),
-                                                      target_x.bin.clone(),
-                                                      new_target_args.clone(),
-                                                      &params.clone(),
+
+                    thread::spawn(move || {
+		                    let local_cmd_executor = command_executor::LocalCommandExecutor;	
+                    		local_cmd_executor.execute_target(target_x_c.path.clone(),
+                                                      target_x_c.bin.clone(),
+                                                      new_target_args,
+                                                      &params_c,
                                                       rx);
+                    		});
                 }
                 ExecutionType::remote => {
                     let remote_cmd_executor = command_executor::RemoteCommandExecutor {
@@ -229,7 +234,7 @@ impl EnergyEval {
             // Check if the target is alive
             target_alive = self.check_target_alive(target_addr.clone(), target_port as u16);
             if target_alive == false {
-	            target_pool.push(target_x.clone(),core.to_string());
+	            target_pool.push(target_x,core.to_string());
         		bench_pool.push(bench_x.clone(),core.to_string());
                 tx.send(true);
                 break;
@@ -282,12 +287,6 @@ impl EnergyEval {
                     let num_bytes = meter_proxy_c.get_num_kbytes_rcvd() as f64;
                     let resp_rate = num_bytes / elapsed_time;
 
-                    println!("Num bytes: {} ", num_bytes * 1024.0f64);
-
-                    println!("Num resp: {} - Resp/s: {}",
-                             meter_proxy_c.get_num_resp(),
-                             meter_proxy_c.get_num_resp() / elapsed_time);
-
                     resp_rate
                 }
                 EnergyType::latency => {
@@ -299,7 +298,7 @@ impl EnergyEval {
             nrg_vec.push(nrg);
 
 
-
+		
             /************************************************************************************************************
             /// **
             /// Clean Resources

@@ -62,7 +62,7 @@ pub struct Spis {
 }
 
 impl Solver for Spis {
-    fn solve(&mut self, problem: &mut Problem) -> MrResult {
+    fn solve(&mut self, problem: &mut Problem, num_workers: usize) -> MrResult {
 
 
         let cooler = StepsCooler {
@@ -134,11 +134,11 @@ impl Solver for Spis {
             println!("Current {:?}",current_counters);
             let cpu_time =
                 perf_meter.get_cpu_exec_time(initial_counters.clone(), current_counters.clone());
-            let ipc = perf_meter.get_core_ipc(initial_counters.clone(), current_counters.clone());
+            let ipc = perf_meter.get_worker_nr_ipc(initial_counters.clone(), current_counters.clone());
             let ipc_util =
                 perf_meter.get_ipc_utilization(initial_counters.clone(), current_counters.clone());
-            let core_utilization =
-                perf_meter.get_core_utilization(initial_counters.clone(), current_counters);*/
+            let worker_nr_utilization =
+                perf_meter.get_worker_nr_utilization(initial_counters.clone(), current_counters);*/
 
 
 
@@ -172,13 +172,13 @@ impl Solver for Spis {
             println!("{} Accepted Energy: {:.4}",
                      Green.paint("[TUNER]"),
                      master_energy);
-            /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - Core \
+            /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - worker_nr \
                       Utilization: {:.2}%",
                      Green.paint("[TUNER]"),
                      cpu_time,
                      ipc,
                      ipc_util,
-                     core_utilization);*/
+                     worker_nr_utilization);*/
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
 
@@ -190,14 +190,12 @@ impl Solver for Spis {
 
             let mut mb = MultiBar::new();
 
-            // Get the number of physical cpu cores
-            let num_cores = common::get_num_cores();
 
 
 
             /// *********************************************************************************************************
-            let handles: Vec<_> = (0..2).map(|core| {
-	 				let mut pb=mb.create_bar(neigh_pool.size()/num_cores as u64);
+            let handles: Vec<_> = (0..num_workers).map(|worker_nr| {
+	 				let mut pb=mb.create_bar(neigh_pool.size()/num_workers as u64);
  			        pb.show_message = true;
 		            					
 					let (mut master_state_c, mut problem_c) = (master_state.clone(), problem.clone());
@@ -231,7 +229,7 @@ impl Solver for Spis {
 				            loop{
 				            	
 				            	
-				            	pb.message(&format!("TID [{}] - Neigh. Exploration Status - ", core));
+				            	pb.message(&format!("TID [{}] - Neigh. Exploration Status - ", worker_nr));
 
 				            	worker_state = {
 	            	
@@ -242,9 +240,9 @@ impl Solver for Spis {
 										
 										last_state=next_state.clone();
 									
-										let accepted_state = match problem_c.energy(&next_state.clone(), core,rng.clone()) {
+										let accepted_state = match problem_c.energy(&next_state.clone(), worker_nr,rng.clone()) {
 						                    Some(new_energy) => {
-						            			println!("Thread : {:?} - Step: {:?} - State: {:?} - Energy: {:?}",core, elapsed_steps_c.get(),next_state,new_energy);
+						            			println!("Thread : {:?} - Step: {:?} - State: {:?} - Energy: {:?}",worker_nr, elapsed_steps_c.get(),next_state,new_energy);
 												last_nrg=new_energy;
 						                        let de = match nrg_type {
 						                            EnergyType::throughput => new_energy - worker_nrg,
@@ -300,7 +298,7 @@ impl Solver for Spis {
 				            
 
 				            threads_res_c.push(res);	
-    		            	pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", core));
+    		            	pb.finish_print(&format!("Child Thread [{}] Terminated the Execution", worker_nr));
 	                	
 		            })
 

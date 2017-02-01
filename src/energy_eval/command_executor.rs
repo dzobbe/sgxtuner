@@ -24,11 +24,13 @@ pub trait CommandExecutor {
 }
 
 
+#[derive(Clone)]
 pub struct RemoteCommandExecutor {
     pub host: String,
     pub user_4_agent: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct LocalCommandExecutor;
 
 
@@ -127,8 +129,8 @@ impl CommandExecutor for LocalCommandExecutor {
             .spawn()
             .expect("Failed to execute Target!");
 
-
         signal_ch.recv();
+
         target_process.kill().expect("Target Process wasn't running");
 
     }
@@ -150,6 +152,7 @@ impl CommandExecutor for LocalCommandExecutor {
     	});*/
 
         let end_time = time::precise_time_ns();
+        
         let elapsed_ns: f64 = (end_time - start_time) as f64;
         let elapsed_time = elapsed_ns / 1000000000.0f64;
 

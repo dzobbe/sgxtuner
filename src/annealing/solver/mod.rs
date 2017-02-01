@@ -10,5 +10,5 @@ pub mod prsa;
 pub mod common;
 
 pub trait Solver {
-    fn solve(&mut self, &mut Problem) -> MrResult;
+    fn solve(&mut self, &mut Problem, usize) -> MrResult;
 }

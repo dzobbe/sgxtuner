@@ -107,7 +107,7 @@ fn main() {
                 cooling_schedule: xml_reader.ann_cooling(),
             };
 
-            solver.solve(&mut problem)
+            solver.solve(&mut problem,1)
         }
         SolverVersion::spis => {
             let mut solver = annealing::solver::spis::Spis {
@@ -118,7 +118,7 @@ fn main() {
                 cooling_schedule: xml_reader.ann_cooling(),
             };
 
-            solver.solve(&mut problem)
+            solver.solve(&mut problem, xml_reader.ann_workers())
         }
         SolverVersion::mips => {
             let mut solver = annealing::solver::mips::Mips {
@@ -129,7 +129,7 @@ fn main() {
                 cooling_schedule: xml_reader.ann_cooling(),
             };
 
-            solver.solve(&mut problem)
+            solver.solve(&mut problem, xml_reader.ann_workers())
         }
         SolverVersion::prsa => {
             let mut solver = annealing::solver::prsa::Prsa {
@@ -141,7 +141,7 @@ fn main() {
                 cooling_schedule: xml_reader.ann_cooling(),
             };
 
-            solver.solve(&mut problem)
+            solver.solve(&mut problem, xml_reader.ann_workers())
         }
     };
 

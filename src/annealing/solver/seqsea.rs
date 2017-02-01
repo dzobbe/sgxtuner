@@ -57,7 +57,7 @@ pub struct Seqsea {
 }
 
 impl Solver for Seqsea {
-    fn solve(&mut self, problem: &mut Problem) -> MrResult {
+    fn solve(&mut self, problem: &mut Problem, num_workers: usize) -> MrResult {
 
 
         let cooler = StepsCooler {

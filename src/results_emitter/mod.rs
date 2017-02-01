@@ -10,6 +10,7 @@ use std::io::Write;
 use std::io::{BufWriter, BufReader, BufRead};
 use std::collections::HashMap;
 use State;
+use xml_reader::XMLReader;
 
 pub struct Emitter2File {
     csv_writer: csv::Writer<File>,

@@ -60,7 +60,7 @@ pub struct Mips {
 }
 
 impl Solver for Mips {
-    fn solve(&mut self, problem: &mut Problem) -> MrResult {
+    fn solve(&mut self, problem: &mut Problem, num_workers: usize) -> MrResult {
 
         let cooler = StepsCooler {
             max_steps: self.max_steps,
@@ -76,16 +76,14 @@ impl Solver for Mips {
         println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
 
-        let num_cores = common::get_num_cores();
-
         let mut elapsed_steps = common::SharedGenericCounter::new();
 
         // Creation of the pool of Initial States. It will be composed by the initial default state
-        // given by the user and by other num_cores-1 states generated in a random way
+        // given by the user and by other num_workers-1 states generated in a random way
         let mut initial_state = problem.initial_state();
         let mut initial_states_pool = common::StatesPool::new();
         initial_states_pool.push(initial_state.clone());
-        for i in 1..num_cores {
+        for i in 1..num_workers {
             initial_states_pool.push(problem.rand_state());
         }
 
@@ -120,9 +118,9 @@ impl Solver for Mips {
 
 
 
-        let handles: Vec<_> = (0..num_cores).map(|core| {
+        let handles: Vec<_> = (0..num_workers).map(|core| {
  				
-				let mut pb=mb.create_bar((self.max_steps/num_cores) as u64);
+				let mut pb=mb.create_bar((self.max_steps/num_workers) as u64);
  			    pb.show_message = true;
 		        
 		       
@@ -175,7 +173,7 @@ impl Solver for Mips {
 
 		            loop{	            	
 
-						/*if worker_elapsed_steps > (max_steps/num_cores){
+						/*if worker_elapsed_steps > (max_steps/num_workers){
 							break;
 						}*/
 						if rejected>200{
@@ -183,7 +181,7 @@ impl Solver for Mips {
                     	} 
 						
 			            elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
-						//let time_2_complete_mins=exec_time*(((max_steps/num_cores) - worker_elapsed_steps) as f64) / 60.0;
+						//let time_2_complete_mins=exec_time*(((max_steps/num_workers) - worker_elapsed_steps) as f64) / 60.0;
 
 			            println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
 			            println!("{} TID[{}] - Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
@@ -191,7 +189,7 @@ impl Solver for Mips {
 			                     Green.paint("[TUNER]"),
 			                     core,
 			                     worker_elapsed_steps,
-			                     (worker_elapsed_steps as f64 / (cooler_c.max_steps/num_cores) as f64) * 100.0,
+			                     (worker_elapsed_steps as f64 / (cooler_c.max_steps/num_workers) as f64) * 100.0,
 			                     elapsed_time);
 			            println!("{} Total Accepted Solutions: {:?} - Current Temperature: {:.2} - Elapsed \
 			                      Time: {:.2} s",
