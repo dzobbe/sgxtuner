@@ -55,6 +55,7 @@ impl CommandExecutor for RemoteCommandExecutor {
             //sess.userauth_agent(user.as_str()).unwrap();
             sess.userauth_password("giovanni", "123").unwrap();
 
+			
             let mut channel = sess.channel_session().unwrap();
 
             let mut env_cmd = String::new();

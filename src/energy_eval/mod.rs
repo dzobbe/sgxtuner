@@ -99,13 +99,24 @@ impl EnergyEval {
     pub fn execute_test_instance(&mut self, params: &State, core: usize) -> Option<f64> {
 
         //Extract the target pool
-        let mut targets_pool = self.xml_reader.get_targs_pool();
+        let mut target_pool = self.xml_reader.get_targs_pool();
         //Extract the bench pool
         let mut bench_pool = self.xml_reader.get_bench_pool();
 
 
-        let target_x = targets_pool.remove();
-        let bench_x = bench_pool.remove();
+		/*let target_x = match target_pool.remove(){
+        	Some(x) => x,
+        	None => "",
+        };       
+		
+        let bench_x = match bench_pool.remove(){
+        	Some(x) => x,
+        	None => "",
+        };*/
+		
+		let target_x =  target_pool.remove(core.to_string());
+		
+        let bench_x =  bench_pool.remove(core.to_string());
 
         // let perf_metrics_handler = PerfMeter::new();
 
@@ -119,13 +130,14 @@ impl EnergyEval {
             bench_x.clone().args.replace(bench_x.port.as_str(),
                                          (base_bench_port + core).to_string().as_str());
 
-
+		
 
         let (target_addr, target_port) = (target_x.clone().address,
                                           (base_target_port + core) as u16);
         let (bench_addr, bench_port) = (bench_x.clone().address, (base_bench_port + core) as u16);
-
-
+		
+		println!("Core: {} - {} - {} {} {} ", core, target_addr, target_port, bench_addr,bench_port);
+		
         let mut target_alive: bool = false;
 
         // Repeat the execution num_iter times for accurate results
@@ -163,13 +175,15 @@ impl EnergyEval {
                                                   bench_port);
             let mut meter_proxy_c = meter_proxy.clone();
 
-            if !spawned_proxies.spawned(bench_port.to_string()) {
-                spawned_proxies.insert(bench_port.to_string(), meter_proxy.clone());
+			let mut key=target_addr.clone()+target_port.to_string().as_str()+bench_addr.clone().as_str()+bench_port.to_string().as_str();
+            
+            if !spawned_proxies.spawned(key.clone()) {
+                spawned_proxies.insert(key.clone(), meter_proxy.clone());
 
                 thread::spawn(move || { meter_proxy.start(); });
             } else {
                 let mut sp = spawned_proxies.clone();
-                meter_proxy = sp.get(bench_port.to_string());
+                meter_proxy = sp.get(key);
                 meter_proxy_c = meter_proxy.clone();
             }
 
@@ -209,12 +223,14 @@ impl EnergyEval {
                 }
             }
 
-
+			
             // Wait for target to startup
             thread::sleep(Duration::from_millis(1000));
             // Check if the target is alive
             target_alive = self.check_target_alive(target_addr.clone(), target_port as u16);
             if target_alive == false {
+	            target_pool.push(target_x.clone(),core.to_string());
+        		bench_pool.push(bench_x.clone(),core.to_string());
                 tx.send(true);
                 break;
             }
@@ -291,8 +307,8 @@ impl EnergyEval {
             	*************************************************************************************************************/
             meter_proxy_c.reset();
             //Send signal to target to exit
-            targets_pool.push(target_x.clone());
-            bench_pool.push(bench_x.clone());
+            target_pool.push(target_x.clone(),core.to_string());
+            bench_pool.push(bench_x.clone(),core.to_string());
             tx.send(true);
 
 

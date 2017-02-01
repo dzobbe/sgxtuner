@@ -27,20 +27,20 @@ pub struct Parameter {
 
 
 #[derive(Debug, Clone)]
-pub struct ProcessPool(Arc<Mutex<Vec<Process2Spawn>>>);
+pub struct ProcessPool(Arc<Mutex<HashMap<String,Process2Spawn>>>);
 impl ProcessPool {
     pub fn new() -> Self {
-        ProcessPool(Arc::new(Mutex::new(Vec::new())))
+        ProcessPool(Arc::new(Mutex::new(HashMap::new())))
     }
 
-    pub fn push(&self, elem: Process2Spawn) {
+    pub fn push(&self, elem: Process2Spawn,id: String) {
         let mut collection = self.0.lock().unwrap();
-        (*collection).push(elem);
+        (*collection).insert(id,elem);
     }
 
-    pub fn remove(&mut self) -> Process2Spawn {
+    pub fn remove(&mut self, id: String) -> Process2Spawn {
         let mut collection = self.0.lock().unwrap();
-        let res = (*collection).pop().unwrap().clone();
+        let res = (*collection).remove(&id).unwrap().clone();
         res
     }
 }

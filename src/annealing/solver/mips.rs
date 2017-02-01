@@ -175,9 +175,12 @@ impl Solver for Mips {
 
 		            loop{	            	
 
-						if worker_elapsed_steps > (max_steps/num_cores){
+						/*if worker_elapsed_steps > (max_steps/num_cores){
 							break;
-						}
+						}*/
+						if rejected>200{
+                    		break;
+                    	} 
 						
 			            elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 						//let time_2_complete_mins=exec_time*(((max_steps/num_cores) - worker_elapsed_steps) as f64) / 60.0;
@@ -238,9 +241,7 @@ impl Solver for Mips {
 				                        } else {
 				                        	rejected+=1;
 				                        	
-				                        	if rejected==200{
-				                        		break;
-				                        	} 
+				                        	
 				                        		
 				                            worker_state
 				                        }

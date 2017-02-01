@@ -42,6 +42,8 @@ impl XMLReader {
         let mut musl_p: Vec<Parameter> = Vec::new();
         let mut musl_p_x: HashMap<String, String> = HashMap::new();
 
+		let mut index_targs=0;
+		let mut index_bench=0;
         for e in parser {
             match e {
                 Ok(XmlEvent::StartElement { name, attributes, .. }) => {
@@ -82,6 +84,15 @@ impl XMLReader {
                 }
 
                 Ok(XmlEvent::EndElement { name }) => {
+                	
+            	 	if name.to_string() == "bench" {
+                        found_bench=false;
+                    } else if name.to_string() == "target" {
+                        found_targ=false;
+                    } else if name.to_string() == "musl-params" {
+                        found_muslp=false;
+                    }
+                    
                     if found_bench == true && name.to_string() != tag.to_string() {
                         let exec_type_enum: ExecutionType =
                             bench_p_x.get("execution").unwrap().to_string().parse().unwrap();
@@ -95,7 +106,8 @@ impl XMLReader {
                             address: bench_p_x.get("address").unwrap().to_string(),
                             port: bench_p_x.get("port").unwrap().to_string(),
                         };
-                        bench_p.push(bench_2_spawn);
+                        bench_p.push(bench_2_spawn,index_bench.to_string());
+                        index_bench+=1;
                     }
 
                     if found_targ == true && name.to_string() != tag.to_string() {
@@ -111,8 +123,9 @@ impl XMLReader {
                             address: targ_p_x.get("address").unwrap().to_string(),
                             port: targ_p_x.get("port").unwrap().to_string(),
                         };
-
-                        targ_p.push(targ_2_spawn);
+						
+                        targ_p.push(targ_2_spawn,index_targs.to_string());
+                        index_targs+=1;
                     }
 
                     if found_muslp == true && name.to_string() != tag.to_string() {
@@ -141,6 +154,8 @@ impl XMLReader {
                         };
                         musl_p.push(musl_parameter);
                     }
+                    
+                   
 
                 }
 
@@ -151,7 +166,7 @@ impl XMLReader {
                 _ => {}
             }
         }
-
+        
         XMLReader {
             targets_collection: targ_p,
             benchs_collection: bench_p,

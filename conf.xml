@@ -9,22 +9,13 @@
 	    <address>10.3.1.1</address>
 	    <port>14200</port>
    	</m1>
- 	<m2>
-	    <execution>remote</execution>
-	    <host>10.3.1.2:22</host>
-	    <user>giovanni</user>
-	    <bin>memcached</bin>
-	    <path>/home/giovanni/memcached/memcached-1.4.25/</path>
-	    <args>-l 10.3.1.2 -p 14200 -t 8</args>
-	    <address>10.3.1.2</address>
-	    <port>14200</port>
-   	</m2>
+
   	<m3>
 	    <execution>remote</execution>
 	    <host>10.3.1.3:22</host>
 	    <user>giovanni</user>
 	    <bin>memcached</bin>
-	    <path>/home/giovanni/memcached/memcached-1.4.25/</path>
+	    <path>/home/sergey/memcached/memcached-musl-sgx/memcached-1.4.25/</path>
 	    <args>-l 10.3.1.3 -p 14200 -t 8</args>
 	    <address>10.3.1.3</address>
 	    <port>14200</port>
@@ -34,14 +25,25 @@
 <bench>
 	<m1>
 	    <execution>local</execution>
-	    <host></host>
-	    <user></user>
+	    <host>None</host>
+	    <user>None</user>
 	    <bin>memaslap</bin>
 	    <path>/home/giovanni/bin/libmemcached-1.0.18/clients/</path>
 	    <args>-s 127.0.0.1:12347 -t 20s -c 512 -T 16 -S 20s</args>
 	    <address>127.0.0.1</address>
 	    <port>12347</port>
    	</m1>
+
+   	<m3>
+	    <execution>local</execution>
+	    <host>None</host>
+	    <user>None</user>
+	    <bin>memaslap</bin>
+	    <path>/home/giovanni/bin/libmemcached-1.0.18/clients/</path>
+	    <args>-s 127.0.0.1:12347 -t 20s -c 512 -T 16 -S 20s</args>
+	    <address>127.0.0.1</address>
+	    <port>12347</port>
+   	</m3>
 </bench>
 
 <annealing>
@@ -54,6 +56,7 @@
     <problem>default</problem>
     <version>spis</version>
 </annealing>
+
 
 <musl-params>
 	<sthreads>

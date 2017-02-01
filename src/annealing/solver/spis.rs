@@ -146,7 +146,7 @@ impl Solver for Spis {
                 break 'outer;
             }
 
-            if subsequent_rej.get() > 400 {
+            if subsequent_rej.get() > 300 {
                 println!("{} Convergence Reached!!!", Green.paint("[TUNER]"));
                 break 'outer;
             }
@@ -196,7 +196,7 @@ impl Solver for Spis {
 
 
             /// *********************************************************************************************************
-            let handles: Vec<_> = (0..3).map(|core| {
+            let handles: Vec<_> = (0..2).map(|core| {
 	 				let mut pb=mb.create_bar(neigh_pool.size()/num_cores as u64);
  			        pb.show_message = true;
 		            					
@@ -227,7 +227,9 @@ impl Solver for Spis {
  							
 							let mut last_nrg=master_energy.clone();
 							let mut last_state=master_state_c.clone();
+							
 				            loop{
+				            	
 				            	
 				            	pb.message(&format!("TID [{}] - Neigh. Exploration Status - ", core));
 
