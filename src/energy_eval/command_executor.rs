@@ -145,7 +145,7 @@ impl CommandExecutor for LocalCommandExecutor {
         let bench_args: Vec<&str> = bench_args.split_whitespace().collect();
         let mut bench_process = Command::new(bench_path + bench_bin.as_str())
             .args(bench_args.as_ref())
-            .stderr(Stdio::piped())
+            .stdout(Stdio::piped())
             .spawn()
             .expect("Failed to execute Benchmark!");
         let pid = bench_process.id();

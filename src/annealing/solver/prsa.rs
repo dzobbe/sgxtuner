@@ -27,7 +27,7 @@ use annealing::solver::Solver;
 use annealing::problem::Problem;
 use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
 use annealing::solver::common;
-use annealing::solver::common::MrResult;
+use annealing::solver::common::{MrResult,IntermediateResults};
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
 
@@ -48,7 +48,7 @@ use pbr::{ProgressBar, MultiBar};
 use std::thread;
 use std::thread::JoinHandle;
 use State;
-
+use std::sync::mpsc::channel;
 
 
 #[derive(Debug, Clone)]
@@ -76,7 +76,8 @@ impl Solver for Prsa {
         let mut population =
             common::StatesPool::new_with_val(problem.get_population(self.population_size));
 
-
+		let mut subsequent_rejected=0;
+   		
         let mut elapsed_steps = common::SharedGenericCounter::new();
         let mut temperature =
             common::Temperature::new(self.max_temp, cooler.clone(), self.cooling_schedule.clone());
@@ -84,18 +85,53 @@ impl Solver for Prsa {
 
         /// *********************************************************************************************************
         let mut start_time = time::precise_time_ns();
-        let mut final_best_res = MrResult {
-            energy: 0.0,
-            state: HashMap::new(),
+        let mut rng=rand::thread_rng();
+        let mut initial_state = problem.initial_state();
+        let mut nrg = match problem.energy(&initial_state.clone(), 0, rng.clone()) {
+            Some(nrg) => nrg,
+            None => panic!("The initial configuration does not allow to calculate the energy"),
         };
+        
+        let mut elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+
+        let mut final_best_res = MrResult {
+            energy: nrg,
+            state: initial_state,
+        };
+        
+        // Channel for receiving results from worker threads and send them to the file writer.
+        let (tx, rx) = channel::<IntermediateResults>();
+        let mut results_emitter = Emitter2File::new();
+        // Spawn the thread that will take care of writing results into a CSV file
+        let (elapsed_steps_c, temperature_c) = (elapsed_steps.clone(), temperature.clone());
+        thread::spawn(move || loop {
+            elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+            match rx.recv() {
+                Ok(res) => {
+                    results_emitter.send_update(temperature_c.get(),
+                                                elapsed_time,
+                                                0.0,
+                                                res.last_nrg,
+                                                &res.last_state,
+                                                res.best_nrg,
+                                                &res.best_state,
+                                                elapsed_steps_c.get());
+                }
+                Err(e) => {} 
+            }
+        });
+        
+        
         'outer: loop {
+        	
         	let mut mb = MultiBar::new();
 
-            if elapsed_steps.get() > self.max_steps {
+
+            if elapsed_steps.get() > self.max_steps || subsequent_rejected > 200{
                 break 'outer;
             }
 
-            let elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+            elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
             println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
@@ -104,6 +140,9 @@ impl Solver for Prsa {
                      elapsed_steps.get(),
                      elapsed_steps.get() as f64 / (self.max_steps as f64) * 100.0,
                      elapsed_time);
+        	println!("{} Best Energy: {:.4}",
+                     Green.paint("[TUNER]"),
+                     final_best_res.energy);
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
 
 
@@ -149,37 +188,70 @@ impl Solver for Prsa {
 
 
                 let mut pb = mb.create_bar((len_subpop / 2) as u64);
-
+				let tx_c=tx.clone();
+	       		let mut final_best_res_c=final_best_res.clone();
                 /*********************************************************************************************************/
                 th_handlers.push(thread::spawn(move || {
                     pb.show_message = true;
+       				let mut rng_c = rand::thread_rng();
 
                     let mut new_sub_population: Vec<State> = Vec::with_capacity(len_subpop);
 
-                    let mut rng = rand::thread_rng();
                     let mut results: Vec<common::MrResult> = Vec::new();
 
                     for step in 0..len_subpop / 2 {
                         pb.message(&format!("TID [{}] - Sub-Population Exploration Status - ",
                                             core));
 
-                        let (parent_1, parent_2) = get_parents(&mut sub_population_c.to_vec());
+                        let (parent_1, parent_2) = get_parents(&mut sub_population_c.to_vec(),rng_c.clone());
 
-                        let cost_parent_1 = problem_c.energy(&parent_1, core, rng.clone())
+                        let cost_parent_1 = problem_c.energy(&parent_1, core, rng_c.clone())
                             .unwrap();
 
+ 						let intermediate_res=IntermediateResults{
+				            			last_nrg: cost_parent_1,
+				            			last_state: parent_1.clone(),
+				            			best_nrg: final_best_res_c.clone().energy,
+				            			best_state: final_best_res_c.clone().state,
+	            		};
+	            		tx_c.send(intermediate_res);
 
-                        let cost_parent_2 = problem_c.energy(&parent_2, core, rng.clone())
+                        let cost_parent_2 = problem_c.energy(&parent_2, core, rng_c.clone())
                             .unwrap();
 
+						let intermediate_res=IntermediateResults{
+				            			last_nrg: cost_parent_2,
+				            			last_state: parent_2.clone(),
+				            			best_nrg: final_best_res_c.clone().energy,
+				            			best_state: final_best_res_c.clone().state,
+	            		};
+	            		tx_c.send(intermediate_res);
+	            		
                         let (mut child_1, mut child_2) =
-                            generate_children(&mut problem_c, &parent_1, &parent_2);
+                            generate_children(&mut problem_c, &parent_1, &parent_2, rng_c.clone());
 
-                        let cost_child_1 = problem_c.energy(&child_1, core, rng.clone())
+                        let cost_child_1 = problem_c.energy(&child_1, core, rng_c.clone())
                             .unwrap();
-                        let cost_child_2 = problem_c.energy(&child_2, core, rng.clone())
+                            
+                        let intermediate_res=IntermediateResults{
+				            			last_nrg: cost_child_1,
+				            			last_state: child_1.clone(),
+				            			best_nrg: final_best_res_c.clone().energy,
+				            			best_state: final_best_res_c.clone().state,
+	            		};
+	            		tx_c.send(intermediate_res);
+	            		    
+                        let cost_child_2 = problem_c.energy(&child_2, core, rng_c.clone())
                             .unwrap();
 
+						let intermediate_res=IntermediateResults{
+				            			last_nrg: cost_child_2,
+				            			last_state: child_2.clone(),
+				            			best_nrg: final_best_res_c.clone().energy,
+				            			best_state: final_best_res_c.clone().state,
+	            		};
+	            		tx_c.send(intermediate_res);
+	            		
                         // Compare cost of parent_1 with cost of child_2
                         let range = Range::new(0.0, 1.0);
 
@@ -189,7 +261,7 @@ impl Solver for Prsa {
                         };
 
                         let (best_state_1, best_cost_1) = {
-                            if range.ind_sample(&mut rng) <
+                            if range.ind_sample(&mut rng_c) <
                                1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp()) {
                                 (parent_1, cost_parent_1)
                             } else {
@@ -206,7 +278,7 @@ impl Solver for Prsa {
                         };
 
                         let (best_state_2, best_cost_2) = {
-                            if range.ind_sample(&mut rng) <
+                            if range.ind_sample(&mut rng_c) <
                                1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp()) {
                                 (parent_2, cost_parent_2)
                             } else {
@@ -237,11 +309,14 @@ impl Solver for Prsa {
 
                         results.push(common::MrResult {
                             energy: iter_best_cost,
-                            state: iter_best_state,
+                            state: iter_best_state.clone(),
                         });
-                        pb.inc();
+                        
+                       
+                        
                         temperature_c.update(elapsed_steps_c.get());
                         elapsed_steps_c.increment();
+                   		pb.inc();
 
                     }
 
@@ -261,11 +336,26 @@ impl Solver for Prsa {
                 h.join().unwrap();
             }
 
-            let final_best_res = eval_best_res(&mut threads_res.get_coll(), self.energy_type);
+            let best_subpop_res = eval_best_res(&mut threads_res.get_coll(), self.energy_type);
 
 
+			let de = match self.energy_type {
+                EnergyType::throughput => best_subpop_res.energy - final_best_res.energy,
+                EnergyType::latency => -(best_subpop_res.energy - final_best_res.energy), 
+            };
+			
+            let range = Range::new(0.0, 1.0);
+            if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature.get()).exp() {
+                final_best_res=best_subpop_res;
+                if de > 0.0 {
+					subsequent_rejected+=1;
+                }
 
+            } else {
+				subsequent_rejected=0;		
+            }
 
+			
         }
 
 
@@ -299,15 +389,14 @@ fn eval_best_res(workers_res: &mut Vec<MrResult>, nrg_type: EnergyType) -> MrRes
 }
 
 
-fn get_parents(sub_population: &mut Vec<State>) -> (State, State) {
-    let mut rng = rand::thread_rng();
+fn get_parents(sub_population: &mut Vec<State>, mut rng: rand::ThreadRng) -> (State, State) {
     let len = sub_population.len();
     let parent_1 = sub_population.swap_remove(rng.gen_range(0, len - 1));
     let parent_2 = sub_population.swap_remove(rng.gen_range(0, len - 1));
     return (parent_1, parent_2);
 }
 
-fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State) -> (State, State) {
+fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State, mut rng: rand::ThreadRng) -> (State, State) {
 
     // Enforce Crossover between parent_1 and parent_2 configurations
     let cutting_point = ((0.4 * parent_1.len() as f64).floor()) as usize;
@@ -332,7 +421,6 @@ fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State) 
         }
     }
 
-    println!("Ress  {:?} - {:?}", child_1, child_2);
     // Enforce Uniform Mutation on Child_1: This operator replaces the value of the chosen "gene" (configuration parameter) with a
     // uniform random value selected between the upper and lower bounds for that gene (into the space state of the configuration parameter).
     let mut keys: Vec<_> = child_1.keys()
@@ -340,10 +428,10 @@ fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State) 
         .collect();
 
     let keys_c = keys.clone();
-    let mut random_gene = rand::thread_rng().choose(&keys_c).unwrap();
+    let mut random_gene = rng.choose(&keys_c).unwrap();
     let mut gen_space_state = &problem.params_configurator.params_space_state.get(random_gene);
 
-    let mut new_value = rand::thread_rng().choose(&*gen_space_state.unwrap()).unwrap();
+    let mut new_value = rng.choose(&*gen_space_state.unwrap()).unwrap();
     *(child_1).get_mut(random_gene).unwrap() = *new_value;
 
 
@@ -351,11 +439,11 @@ fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State) 
     keys = child_2.keys()
         .map(|arg| arg.clone())
         .collect();
-    random_gene = rand::thread_rng().choose(&keys).unwrap();
+    random_gene = rng.choose(&keys).unwrap();
 
     let mut gen_space_state_2 = &problem.params_configurator.params_space_state.get(random_gene);
 
-    new_value = rand::thread_rng().choose(&*gen_space_state_2.unwrap()).unwrap();
+    new_value = rng.choose(&*gen_space_state_2.unwrap()).unwrap();
     *(child_2).get_mut(random_gene).unwrap() = *new_value;
 
 

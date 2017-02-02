@@ -122,7 +122,7 @@ impl MeterProxy {
         let server = clients.for_each(|(client, addr)| {
             handle.spawn(client.then(move |res| {
                 match res {
-                    Ok((a, b)) => println!("proxied {}/{} bytes for {}", a, b, addr),
+                    Ok((a, b)) => {},//println!("proxied {}/{} bytes for {}", a, b, addr),
                     Err(e) => {}
                 }
                 futures::finished(())
