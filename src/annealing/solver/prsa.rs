@@ -202,93 +202,136 @@ impl Solver for Prsa {
                     for step in 0..len_subpop / 2 {
                         pb.message(&format!("TID [{}] - Sub-Population Exploration Status - ",
                                             core));
+                        
+						let mut parent_died=false;
+						let mut child_died=false;
 
                         let (parent_1, parent_2) = get_parents(&mut sub_population_c.to_vec(),rng_c.clone());
 
-                        let cost_parent_1 = problem_c.energy(&parent_1, core, rng_c.clone())
-                            .unwrap();
-
- 						let intermediate_res=IntermediateResults{
-				            			last_nrg: cost_parent_1,
+                        let (cost_parent_1,cost_parent_2) = match problem_c.energy(&parent_1, core, rng_c.clone()) {
+                        	Some(c_parent_1) => {
+                        		let intermediate_res=IntermediateResults{
+				            			last_nrg: c_parent_1,
 				            			last_state: parent_1.clone(),
 				            			best_nrg: final_best_res_c.clone().energy,
 				            			best_state: final_best_res_c.clone().state,
-	            		};
-	            		tx_c.send(intermediate_res);
-
-                        let cost_parent_2 = problem_c.energy(&parent_2, core, rng_c.clone())
-                            .unwrap();
-
-						let intermediate_res=IntermediateResults{
-				            			last_nrg: cost_parent_2,
-				            			last_state: parent_2.clone(),
-				            			best_nrg: final_best_res_c.clone().energy,
-				            			best_state: final_best_res_c.clone().state,
-	            		};
-	            		tx_c.send(intermediate_res);
+			            		};
+			            		tx_c.send(intermediate_res);
+		
+		                        let c_parent_2 = match problem_c.energy(&parent_2, core, rng_c.clone()){
+		                        	Some(c_p_2) => {
+		                        		let intermediate_res=IntermediateResults{
+						            			last_nrg: c_p_2,
+						            			last_state: parent_2.clone(),
+						            			best_nrg: final_best_res_c.clone().energy,
+						            			best_state: final_best_res_c.clone().state,
+					            		};
+					            		tx_c.send(intermediate_res);
+			            		
+		                        		c_p_2
+	                        		},
+		                        	None => {
+		                        		parent_died=true;
+		                        		-1.0 
+	                        		},
+		                        };
+								
+			            		(c_parent_1,c_parent_2)
+                        	},
+                        	None => {
+                        		parent_died=true;
+                    			(-1.0,-1.0)
+                    		},
+                        };
+						                    
+ 						
 	            		
                         let (mut child_1, mut child_2) =
                             generate_children(&mut problem_c, &parent_1, &parent_2, rng_c.clone());
 
-                        let cost_child_1 = problem_c.energy(&child_1, core, rng_c.clone())
-                            .unwrap();
-                            
-                        let intermediate_res=IntermediateResults{
-				            			last_nrg: cost_child_1,
+                        let (cost_child_1,cost_child_2) = match problem_c.energy(&child_1, core, rng_c.clone()) {
+                        	Some(c_child_1) => {
+                        		let intermediate_res=IntermediateResults{
+				            			last_nrg: c_child_1,
 				            			last_state: child_1.clone(),
 				            			best_nrg: final_best_res_c.clone().energy,
 				            			best_state: final_best_res_c.clone().state,
-	            		};
-	            		tx_c.send(intermediate_res);
-	            		    
-                        let cost_child_2 = problem_c.energy(&child_2, core, rng_c.clone())
-                            .unwrap();
+			            		};
+			            		tx_c.send(intermediate_res);
+		
+		                        let c_child_2 = match problem_c.energy(&child_2, core, rng_c.clone()){
+		                        	Some(c_c_2) => {
+		                        		let intermediate_res=IntermediateResults{
+						            			last_nrg: c_c_2,
+						            			last_state: child_2.clone(),
+						            			best_nrg: final_best_res_c.clone().energy,
+						            			best_state: final_best_res_c.clone().state,
+					            		};
+					            		tx_c.send(intermediate_res);
+			            		
+		                        		c_c_2
+	                        		},
+		                        	None => {
+		                        		child_died=true;
+	                        			-1.0
+	                        		},
+		                        };
+								
+			            		(c_child_1,c_child_2)
+                        	},
+                        	None => {
+                        		child_died=true;
+                    			(-1.0,-1.0) 
+                    		},
+                        };
 
-						let intermediate_res=IntermediateResults{
-				            			last_nrg: cost_child_2,
-				            			last_state: child_2.clone(),
-				            			best_nrg: final_best_res_c.clone().energy,
-				            			best_state: final_best_res_c.clone().state,
-	            		};
-	            		tx_c.send(intermediate_res);
-	            		
                         // Compare cost of parent_1 with cost of child_2
                         let range = Range::new(0.0, 1.0);
-
-                        let de_p1_c2 = match nrg_type {
-                            EnergyType::throughput => cost_parent_1 - cost_child_2,
-                            EnergyType::latency => -(cost_parent_1 - cost_child_2), 
-                        };
-
-                        let (best_state_1, best_cost_1) = {
-                            if range.ind_sample(&mut rng_c) <
-                               1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp()) {
-                                (parent_1, cost_parent_1)
-                            } else {
-                                (child_2, cost_child_2)
-                            }
-                        };
-
-
-
-                        // Compare cost of parent_2 with cost of child_1
-                        let de_p2_c1 = match nrg_type {
-                            EnergyType::throughput => cost_parent_2 - cost_child_1,
-                            EnergyType::latency => -(cost_parent_2 - cost_child_1), 
-                        };
-
-                        let (best_state_2, best_cost_2) = {
-                            if range.ind_sample(&mut rng_c) <
-                               1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp()) {
-                                (parent_2, cost_parent_2)
-                            } else {
-                                (child_1, cost_child_1)
-                            }
-                        };
-
-                        new_sub_population.push(best_state_1.clone());
-                        new_sub_population.push(best_state_2.clone());
-
+	                    let (best_state_1, best_cost_1)={
+							if parent_died==false && child_died==false{
+		                    	let de_p1_c2 = match nrg_type {
+		                            EnergyType::throughput => cost_parent_1 - cost_child_2,
+		                            EnergyType::latency => -(cost_parent_1 - cost_child_2), 
+		                        };
+	                            if range.ind_sample(&mut rng_c) <
+	                               1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp()) {
+	                                (parent_1.clone(), cost_parent_1)
+	                            } else {
+	                                (child_2.clone(), cost_child_2)
+	                            }
+                            }else if parent_died==true{
+							 	(child_1.clone(),cost_child_1)
+							}else {
+							 	(parent_1.clone(),cost_parent_1)
+							}
+							
+	                    };
+	                   
+	                    
+	                    let (best_state_2, best_cost_2)={
+							if parent_died==false && child_died==false{
+		                    	 // Compare cost of parent_2 with cost of child_1
+		                        let de_p2_c1 = match nrg_type {
+		                            EnergyType::throughput => cost_parent_2 - cost_child_1,
+		                            EnergyType::latency => -(cost_parent_2 - cost_child_1), 
+		                        };
+	                            if range.ind_sample(&mut rng_c) <
+	                               1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp()) {
+	                                (parent_2.clone(), cost_parent_2)
+	                            } else {
+	                                (child_1.clone(), cost_child_1)
+	                            }
+                            }else if parent_died==true{
+							 	(child_2.clone(),cost_child_2)
+							}else{
+							 	(parent_2.clone(),cost_parent_2)
+							}
+							
+	                    };
+	                        							            		
+	            	
+						new_sub_population.push(best_state_1.clone());
+	                    new_sub_population.push(best_state_2.clone());
 
                         let (iter_best_state, iter_best_cost) = match nrg_type {
                             EnergyType::throughput => {
@@ -345,6 +388,7 @@ impl Solver for Prsa {
             };
 			
             let range = Range::new(0.0, 1.0);
+            
             if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature.get()).exp() {
                 final_best_res=best_subpop_res;
                 if de > 0.0 {

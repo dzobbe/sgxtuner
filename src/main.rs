@@ -136,7 +136,7 @@ fn main() {
                 min_temp: t_min,
                 max_temp: t_max,
                 max_steps: xml_reader.ann_max_steps(),
-                population_size: 50,
+                population_size: 48,
                 energy_type: xml_reader.ann_energy(),
                 cooling_schedule: xml_reader.ann_cooling(),
             };
