@@ -68,7 +68,6 @@ impl Solver for Mips {
             max_temp: self.max_temp,
         };
 
-        let mut results_emitter = Emitter2File::new();
 
         ("{}",Green.paint("\n-------------------------------------------------------------------------------------------------------------------"));
         println!("{} Initialization Phase: Evaluation of Energy for Default Parameters",
@@ -94,33 +93,10 @@ impl Solver for Mips {
 
         let mut overall_start_time = time::precise_time_ns();
 
-        let (tx, rx) = channel::<IntermediateResults>();
-        let mut results_emitter = Emitter2File::new();
-        // Spawn the thread that will take care of writing results into a CSV file
-        let elapsed_steps_c = elapsed_steps.clone();
-        thread::spawn(move || loop {
-            let elapsed_time = (time::precise_time_ns() - overall_start_time) as f64 /
-                               1000000000.0f64;
-            match rx.recv() {
-                Ok(res) => {
-                    results_emitter.send_update(0.0,
-                                                elapsed_time,
-                                                0.0,
-                                                res.last_nrg,
-                                                &res.last_state,
-                                                res.best_nrg,
-                                                &res.best_state,
-                                                elapsed_steps_c.get());
-                }
-                Err(e) => {} 
-            }
-        });
-
-
 
         let handles: Vec<_> = (0..num_workers).map(|core| {
  				
-				let mut pb=mb.create_bar((self.max_steps/num_workers) as u64);
+				let mut pb=mb.create_bar((self.max_steps) as u64);
  			    pb.show_message = true;
 		        
 		       
@@ -138,7 +114,6 @@ impl Solver for Mips {
 				let max_temp=self.max_temp.clone();
 				let cooler_c=cooler.clone();
 				let is=initial_state.clone();
-				let tx_c=tx.clone();	
  	 			/************************************************************************************************************/
  				thread::spawn(move || {
 				 	
@@ -147,7 +122,7 @@ impl Solver for Mips {
 			        let mut subsequent_improves = 0;
 					let mut accepted = 0;
 			        let mut rejected = 0;
-					let mut temperature = max_temp;
+					let mut temperature = common::Temperature::new(max_temp, cooler_c.clone(), cooling_sched);
 					let mut worker_elapsed_steps=0;
 							
 					let mut rng = thread_rng();
@@ -165,6 +140,27 @@ impl Solver for Mips {
   					
   					let range = Range::new(0.0, 1.0);
   					
+  					let temperature_c=temperature.clone();
+  					
+  					let mut results_emitter = Emitter2File::new(core.to_string());
+					let (tx, rx) = channel::<IntermediateResults>();
+			        // Spawn the thread that will take care of writing results into a CSV file
+			        thread::spawn(move || loop {
+						let mut elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
+			            match rx.recv() {
+			                Ok(res) => {
+			                    results_emitter.send_update(temperature_c.get(),
+			                                                elapsed_time,
+			                                                0.0,
+			                                                res.last_nrg,
+			                                                &res.last_state,
+			                                                res.best_nrg,
+			                                                &res.best_state,
+			                                                worker_elapsed_steps);
+			                }
+			                Err(e) => {} 
+			            }
+			        });
 	 				
 			 		
 			 		/************************************************************************************************************/			    	
@@ -173,13 +169,10 @@ impl Solver for Mips {
 
 		            loop{	            	
 
-						/*if worker_elapsed_steps > (max_steps/num_workers){
+						if worker_elapsed_steps > max_steps || rejected>300{
 							break;
-						}*/
-						if rejected>200{
-                    		break;
-                    	} 
-						
+						}
+				
 			            elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 						//let time_2_complete_mins=exec_time*(((max_steps/num_workers) - worker_elapsed_steps) as f64) / 60.0;
 
@@ -195,7 +188,7 @@ impl Solver for Mips {
 			                      Time: {:.2} s",
 			                     Green.paint("[TUNER]"),
 			                     accepted,
-			                     temperature,
+			                     temperature.get(),
 			                     elapsed_time);
 			            println!("{} Accepted State: {:?}", Green.paint("[TUNER]"), worker_state);
 			            println!("{} Accepted Energy: {:.4} - Last Measured Energy: {:.4}",
@@ -222,13 +215,13 @@ impl Solver for Mips {
 				                            EnergyType::latency => -(new_energy - worker_nrg), 
 				                        }; 
 				
-				                        if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature).exp() {
+				                        if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature.get()).exp() {
 				                            accepted+=1;
-				                        	rejected=0;
 				                        	
 				                            worker_nrg = new_energy;
 				
 				                            if de > 0.0 {
+					                        	rejected=0;
 				                                total_improves = total_improves + 1;
 				                                subsequent_improves = subsequent_improves + 1;
 				                            }
@@ -238,8 +231,6 @@ impl Solver for Mips {
 				
 				                        } else {
 				                        	rejected+=1;
-				                        	
-				                        	
 				                        		
 				                            worker_state
 				                        }
@@ -262,16 +253,12 @@ impl Solver for Mips {
 				            			best_nrg: worker_nrg,
 				            			best_state: worker_state.clone(),
 				            		};
-		            		tx_c.send(intermediate_res);
+		            		tx.send(intermediate_res);
 				            		
 							
 			            	worker_elapsed_steps+=1;
 			            	
-							temperature=match cooling_sched {
-					                CoolingSchedule::linear => cooler_c.linear_cooling(worker_elapsed_steps),
-					                CoolingSchedule::exponential => cooler_c.exponential_cooling(worker_elapsed_steps),
-					                CoolingSchedule::basic_exp_cooling => cooler_c.basic_exp_cooling(temperature),
-		           				 };   
+							temperature.update(worker_elapsed_steps);	
 					}
 		            
 		            let res=common::MrResult{

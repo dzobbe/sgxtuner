@@ -92,8 +92,8 @@ impl Solver for Spis {
 
 
         /*   let mut perf_meter = CountersConsumer::new();
-        let mut initial_counters = perf_meter.get_current_counters();
-        let mut cpu_time = 0.0;*/
+        let mut initial_counters = perf_meter.get_current_counters();*/
+        
         let mut cpu_time = 0.0;
         let mut elapsed_steps = common::SharedGenericCounter::new();
         let mut accepted = common::SharedGenericCounter::new();
@@ -105,7 +105,7 @@ impl Solver for Spis {
 
         // Channel for receiving results from worker threads and send them to the file writer.
         let (tx, rx) = channel::<IntermediateResults>();
-        let mut results_emitter = Emitter2File::new();
+        let mut results_emitter = Emitter2File::new("0".to_string());
         // Spawn the thread that will take care of writing results into a CSV file
         let (elapsed_steps_c, temperature_c) = (elapsed_steps.clone(), temperature.clone());
         thread::spawn(move || loop {

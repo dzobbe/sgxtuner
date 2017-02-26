@@ -25,6 +25,8 @@ use energy_eval::command_executor::CommandExecutor;
 use xml_reader::XMLReader;
 use shared::Process2Spawn;
 use shared::ProcessPool;
+use ctrlc;
+use std::process;
 
 pub mod command_executor;
 
@@ -103,16 +105,6 @@ impl EnergyEval {
         //Extract the bench pool
         let mut bench_pool = self.xml_reader.get_bench_pool();
 
-
-		/*let target_x = match target_pool.remove(){
-        	Some(x) => x,
-        	None => "",
-        };       
-		
-        let bench_x = match bench_pool.remove(){
-        	Some(x) => x,
-        	None => "",
-        };*/
 		
 		let target_x =  target_pool.remove(core.to_string());
 		
@@ -129,7 +121,6 @@ impl EnergyEval {
         let new_bench_args =
             bench_x.clone().args.replace(bench_x.port.as_str(),
                                          (base_bench_port + core).to_string().as_str());
-
 		
 
         let (target_addr, target_port) = (target_x.clone().address,
@@ -198,7 +189,7 @@ impl EnergyEval {
             /// Set the environement variables that will configure the parameters
             /// needed by the target application
             ///
-            let (tx, rx) = channel::<bool>();
+            let (stop_tx, stop_rx) = channel::<bool>();
 
             match target_x.clone().execution_type {
                 ExecutionType::local => {
@@ -207,7 +198,7 @@ impl EnergyEval {
                                                   target_x.bin.clone(),
                                                   new_target_args.clone(),
                                                   &params,
-                                                  rx);
+                                                  stop_rx);
                 }
                 ExecutionType::remote => {
                     let remote_cmd_executor = command_executor::RemoteCommandExecutor {
@@ -218,7 +209,7 @@ impl EnergyEval {
                                                        target_x.bin.clone(),
                                                        new_target_args.clone(),
                                                        &params.clone(),
-                                                       rx);
+                                                       stop_rx);
                 }
             }
 
@@ -230,11 +221,18 @@ impl EnergyEval {
             if target_alive == false {
 	            target_pool.push(target_x,core.to_string());
         		bench_pool.push(bench_x.clone(),core.to_string());
-                tx.send(true);
+                stop_tx.send(true);
                 break;
             }
 
 
+			let stop_tx_c=stop_tx.clone();
+			ctrlc::set_handler(move || {
+	                stop_tx_c.send(true);
+	                process::exit(0);
+		    });
+			
+			
             let start_time = time::precise_time_ns();
 
             /***********************************************************************************************************
@@ -302,7 +300,7 @@ impl EnergyEval {
             //Send signal to target to exit
             target_pool.push(target_x.clone(),core.to_string());
             bench_pool.push(bench_x.clone(),core.to_string());
-            tx.send(true);
+            stop_tx.send(true);
 
 
         }
@@ -345,6 +343,7 @@ impl EnergyEval {
         // In that case the energy returned by this function is None
         let targ_addr: IpAddr = target_addr.parse()
             .expect("Unable to parse Target Address");
+            
         let target_alive = match TcpStream::connect((targ_addr, target_port)) {
             Err(e) => {
                 println!("{} The Target Application seems down. Maybe a bad configuration: {}",
@@ -362,29 +361,6 @@ impl EnergyEval {
     }
 
 
-    /*fn create_ssh_tunnel(&self,core: usize){
-    	
-    	let host=self.xml_reader.targ_host();
-    	let temp_host_vec: Vec<&str>=host.split(":").collect();
-    	let remote_host_addr=temp_host_vec[0];
-    	let remote_host_port=temp_host_vec[1];
-				
-		let host_4_cmd=format!("{}@{}",self.xml_reader.targ_host_user(),remote_host_addr);
-		let addr_2_tunnel=format!("{}:localhost:{}",(base_target_port+core).to_string().as_str(),(base_target_port+core).to_string().as_str());
-		
-		let mut cmd_sshtunnel=Command::new("ssh")
-							    .arg("-f")
-							    .arg(host_4_cmd)
-							    .arg("-p")
-							    .arg(remote_host_port)
-							    .arg("-L")
-							    .arg(addr_2_tunnel)
-							    .arg("-N")
-							    .spawn()
-							    .expect("ls command failed to start");
-	            	
-		    	
-    }*/
 }
 
 /// Load the CpuSet for the given core index.

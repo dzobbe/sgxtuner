@@ -101,7 +101,7 @@ impl Solver for Prsa {
         
         // Channel for receiving results from worker threads and send them to the file writer.
         let (tx, rx) = channel::<IntermediateResults>();
-        let mut results_emitter = Emitter2File::new();
+        let mut results_emitter = Emitter2File::new("0".to_string());
         // Spawn the thread that will take care of writing results into a CSV file
         let (elapsed_steps_c, temperature_c) = (elapsed_steps.clone(), temperature.clone());
         thread::spawn(move || loop {
@@ -127,7 +127,7 @@ impl Solver for Prsa {
         	let mut mb = MultiBar::new();
 
 
-            if elapsed_steps.get() > self.max_steps || subsequent_rejected > 200{
+            if elapsed_steps.get() > self.max_steps || subsequent_rejected > 20{
                 break 'outer;
             }
 

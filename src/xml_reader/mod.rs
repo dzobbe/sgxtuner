@@ -247,10 +247,16 @@ impl XMLReader {
         return self.ann_params.get("num_iter").unwrap().to_string().parse().unwrap();
     }
     pub fn ann_min_temp(&self) -> Option<f64> {
-        return Some(self.ann_params.get("min_temp").unwrap().to_string().parse::<f64>().unwrap());
+    	match self.ann_params.get("min_temp"){
+    		Some(val) => return Some(val.to_string().parse::<f64>().unwrap()),
+    		None => return None,
+    	};
     }
     pub fn ann_max_temp(&self) -> Option<f64> {
-        return Some(self.ann_params.get("max_temp").unwrap().to_string().parse::<f64>().unwrap());
+    	match self.ann_params.get("max_temp"){
+    		Some(val) => return Some(val.to_string().parse::<f64>().unwrap()),
+    		None => return None,
+    	};
     }
     
     pub fn ann_workers(&self) -> usize  {

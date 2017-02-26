@@ -14,6 +14,7 @@ extern crate wait_timeout;
 extern crate raw_cpuid;
 extern crate ssh2;
 extern crate xml;
+extern crate ctrlc;
 
 #[macro_use]
 extern crate futures;
@@ -136,7 +137,7 @@ fn main() {
                 min_temp: t_min,
                 max_temp: t_max,
                 max_steps: xml_reader.ann_max_steps(),
-                population_size: 48,
+                population_size: 32,
                 energy_type: xml_reader.ann_energy(),
                 cooling_schedule: xml_reader.ann_cooling(),
             };
@@ -158,7 +159,7 @@ fn main() {
 
 /// Check if the temperature is given by the user or if Tmin and Tmax need to be evaluated
 fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Problem) -> (f64, f64) {
-    let num_exec = 20;
+    let num_exec = 5;
 
     let min_temp = match t_min {
         Some(val) => val,
@@ -170,35 +171,35 @@ fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Proble
     let max_temp = match t_max {
         Some(val) => val,
         None => {
-            let mut energies = Vec::with_capacity(num_exec);
+            let mut deltas: Vec<f64> = Vec::with_capacity(num_exec);
             /// Search for Tmax: a temperature that gives 98% acceptance
             /// Tmin: equal to 1.
             println!("{} Temperature not provided. Starting its Evaluation",
                      Green.paint("[TUNER]"));
             let mut state = problem.initial_state();
-            match problem.energy(&state, 0, rng.clone()) {
-                Some(nrg) => energies.push(nrg),
+            let mut energy=match problem.energy(&state, 0, rng.clone()) {
+                Some(nrg) => nrg,
                 None => panic!("The initial configuration does not allow to calculate the energy"),
             };
 
             for i in 0..num_exec {
 
                 let next_state = problem.rand_state();
-                match problem.energy(&next_state, 0, rng.clone()) {
-                    Some(new_energy) => {
-                        energies.push(new_energy);
-                    }
+                let new_energy=match problem.energy(&next_state, 0, rng.clone()) {
+                    Some(new_nrg) => deltas.push((energy-new_nrg).abs()),
                     None => {
                         println!("{} The current configuration parameters cannot be evaluated. \
                                   Skip!",
                                  Green.paint("[TUNER]"));
                     }
                 };
+                
             }
 
             let desired_prob: f64 = 0.98;
-            (energies.iter().cloned().fold(0. / 0., f64::max) -
-             energies.iter().cloned().fold(0. / 0., f64::min)) / desired_prob.ln()
+            let sum_deltas: f64=deltas.iter().cloned().sum();
+            //(energies.iter().cloned().fold(0. / 0., f64::max) -energies.iter().cloned().fold(0. / 0., f64::min))
+            (sum_deltas /deltas.len() as f64)/ (-desired_prob.ln())
         }
     };
 

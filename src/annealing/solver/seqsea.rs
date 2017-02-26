@@ -66,7 +66,7 @@ impl Solver for Seqsea {
             max_temp: self.max_temp,
         };
 
-        let mut results_emitter = Emitter2File::new();
+        let mut results_emitter = Emitter2File::new("0".to_string());
         let mut rng = thread_rng();
         let range = Range::new(0.0, 1.0);
 

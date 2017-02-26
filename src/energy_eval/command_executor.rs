@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use libc::{kill, SIGTERM};
 use energy_eval::bench_exec_time;
 use State;
-
+use std::env;
 
 pub trait CommandExecutor {
     fn execute_target(&self,
@@ -36,6 +36,8 @@ pub struct LocalCommandExecutor;
 
 
 impl CommandExecutor for RemoteCommandExecutor {
+	
+	
     fn execute_target(&self,
                       target_path: String,
                       target_bin: String,
@@ -46,7 +48,6 @@ impl CommandExecutor for RemoteCommandExecutor {
         let host = self.host.clone();
         let user = self.user_4_agent.clone();
         let params_c = params.clone();
-
 
         thread::spawn(move || {
 
@@ -70,7 +71,23 @@ impl CommandExecutor for RemoteCommandExecutor {
                               env_cmd.as_str(),
                               (target_path + target_bin.as_str()).as_str(),
                               target_args.as_str());
+            
             channel.exec(cmd.as_str()).unwrap();
+
+			match env::var("RUST_BACKTRACE") {
+			        Ok(bktrace) => {
+			        	if bktrace=="1"{
+				        	let mut s = String::new();
+							channel.read_to_string(&mut s).unwrap();
+							println!("{}", s);
+						}
+		        	},
+			        Err(e) => {},
+		    };		
+				
+			
+			
+			
             let mut channel_2 = sess.channel_session().unwrap();
 
             signal_ch.recv();
@@ -80,6 +97,8 @@ impl CommandExecutor for RemoteCommandExecutor {
         });
 
     }
+                      
+                      
 
     fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String) {
         let host = self.host.clone();
@@ -100,6 +119,17 @@ impl CommandExecutor for RemoteCommandExecutor {
                               (bench_path + bench_bin.as_str()).as_str(),
                               bench_args.as_str());
             channel.exec(cmd.as_str()).unwrap();
+            
+            match env::var("RUST_BACKTRACE") {
+			        Ok(bktrace) => {
+			        	if bktrace=="1"{
+				        	let mut s = String::new();
+							channel.read_to_string(&mut s).unwrap();
+							println!("{}", s);
+						}
+		        	},
+			        Err(e) => {},
+		    };		
         });
     }
 }
@@ -142,12 +172,15 @@ impl CommandExecutor for LocalCommandExecutor {
 
     fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String) {
         let start_time = time::precise_time_ns();
+
         let bench_args: Vec<&str> = bench_args.split_whitespace().collect();
-        let mut bench_process = Command::new(bench_path + bench_bin.as_str())
-            .args(bench_args.as_ref())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to execute Benchmark!");
+        
+        let mut bench_process= Command::new(bench_path + bench_bin.as_str())
+					            .args(bench_args.as_ref())
+					            .stderr(Stdio::piped())
+					            .spawn()
+					            .expect("Failed to execute Benchmark!");
+        	
         let pid = bench_process.id();
         thread::spawn(move || { 
         		 unsafe{

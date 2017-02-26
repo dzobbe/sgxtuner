@@ -10,6 +10,7 @@ use std::io::Write;
 use std::io::{BufWriter, BufReader, BufRead};
 use std::collections::HashMap;
 use State;
+use xml_reader;
 use xml_reader::XMLReader;
 
 pub struct Emitter2File {
@@ -27,7 +28,7 @@ pub struct Emitter2Influx {
 
 
 pub trait Emitter {
-    fn new() -> Self;
+    fn new(id: String) -> Self;
     fn send_update(&mut self,
                    temperature: f64,
                    time: f64,
@@ -88,19 +89,22 @@ pub trait Emitter {
 
 
 impl Emitter for Emitter2File {
-    fn new() -> Self {
+    fn new(id: String) -> Self {
         let mut temp_vec: Vec<String> = Vec::new();
 
-        let f = OpenOptions::new().write(true).create(true).open("results.csv");
+		let filename=format!("{}{}{}",
+                              "results-",
+                              id.as_str(),
+                              ".csv");
+        let f = OpenOptions::new().write(true).create(true).truncate(true).open(filename);
 
         let mut writer = BufWriter::new(f.unwrap());
         let mut wtr = csv::Writer::from_buffer(writer);
 
-
+		let xml_reader = xml_reader::XMLReader::new("conf.xml".to_string());
         // Create a path to the params file
-        let file_reader = BufReader::new(File::open("params.conf").unwrap());
-        for (_, line) in file_reader.lines().enumerate() {
-            temp_vec.push(line.unwrap().split(":").next().unwrap().to_string());
+        for param in xml_reader.get_musl_params() {
+            temp_vec.push(param.name);
         }
 
         let mut vec_2_write: Vec<String> = Vec::new();
