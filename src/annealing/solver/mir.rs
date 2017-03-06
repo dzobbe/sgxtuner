@@ -19,7 +19,7 @@
 /// ****************************************************************************
 /// *****************************************************************************
 /// **
-/// Multiple Independent Parallel Searcher (MIPS)
+/// Multiple Independent Run (MIR)
 /// *
 /// *****************************************************************************
 /// ****************************************************************************
@@ -51,7 +51,7 @@ use std::sync::mpsc::channel;
 
 
 #[derive(Debug, Clone)]
-pub struct Mips {
+pub struct Mir {
     pub min_temp: f64,
     pub max_temp: f64,
     pub max_steps: usize,
@@ -59,7 +59,7 @@ pub struct Mips {
     pub energy_type: EnergyType,
 }
 
-impl Solver for Mips {
+impl Solver for Mir {
     fn solve(&mut self, problem: &mut Problem, num_workers: usize) -> MrResult {
 
         let cooler = StepsCooler {

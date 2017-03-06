@@ -12,6 +12,7 @@ use libc::{kill, SIGTERM};
 use energy_eval::bench_exec_time;
 use State;
 use std::env;
+use energy_eval::output_parser::Parser;
 
 pub trait CommandExecutor {
     fn execute_target(&self,
@@ -20,7 +21,7 @@ pub trait CommandExecutor {
                       target_args: String,
                       params: &State,
                       signal_ch: mpsc::Receiver<bool>);
-    fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String);
+    fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String, parser: Parser ) -> Option<f64>;
 }
 
 static mut first : bool = true;
@@ -86,13 +87,13 @@ impl CommandExecutor for RemoteCommandExecutor {
 		    };		
 				
 			
-			
-			
             let mut channel_2 = sess.channel_session().unwrap();
+
 
             signal_ch.recv();
 
-            let kill_cmd = format!("pkill {}", target_bin);
+
+            let kill_cmd = format!("pkill -9 {}", target_bin);
             channel_2.exec(kill_cmd.as_str()).unwrap();
         });
 
@@ -100,7 +101,7 @@ impl CommandExecutor for RemoteCommandExecutor {
                       
                       
 
-    fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String) {
+    fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String, parser: Parser) -> Option<f64>{
         let host = self.host.clone();
         let user = self.user_4_agent.clone();
         thread::spawn(move || {
@@ -131,6 +132,8 @@ impl CommandExecutor for RemoteCommandExecutor {
 			        Err(e) => {},
 		    };		
         });
+        
+        return Some(0.0);
     }
 }
 
@@ -170,17 +173,17 @@ impl CommandExecutor for LocalCommandExecutor {
 
     }
 
-    fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String) {
+    fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String, parser: Parser) -> Option<f64> {
         let start_time = time::precise_time_ns();
 
         let bench_args: Vec<&str> = bench_args.split_whitespace().collect();
         
         let mut bench_process= Command::new(bench_path + bench_bin.as_str())
 					            .args(bench_args.as_ref())
-					            .stderr(Stdio::piped())
+					            .stdout(Stdio::piped())
 					            .spawn()
 					            .expect("Failed to execute Benchmark!");
-        	
+		        	
         let pid = bench_process.id();
         thread::spawn(move || { 
         		 unsafe{
@@ -190,7 +193,9 @@ impl CommandExecutor for LocalCommandExecutor {
     		 		}
     		 	}
     	});
-        bench_process.wait().expect("Failed to wait on Benchmark");
+        
+        
+        let output=bench_process.wait_with_output().expect("Failed to wait on Benchmark");
 
 		
         let end_time = time::precise_time_ns();
@@ -198,8 +203,13 @@ impl CommandExecutor for LocalCommandExecutor {
         let elapsed_ns: f64 = (end_time - start_time) as f64;
         let elapsed_time = elapsed_ns / 1000000000.0f64;
 
+		//Extract result of energy
+		let meas_nrg=parser.parse(output);
+		
         bench_exec_time.set((elapsed_ns / 1000000.0f64) as u32);
 		unsafe{first=false;};
+		
+		return meas_nrg;
 
     }
 }

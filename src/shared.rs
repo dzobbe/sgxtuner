@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use ExecutionType;
-
+use BenchmarkName;
 
 #[derive(Debug, Clone)]
 pub struct Process2Spawn {

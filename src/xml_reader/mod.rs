@@ -6,6 +6,7 @@ use EnergyType;
 use ProblemType;
 use ExecutionType;
 use CoolingSchedule;
+use BenchmarkName;
 use SolverVersion;
 use shared::{Process2Spawn, Parameter, ProcessPool};
 
@@ -13,6 +14,7 @@ use shared::{Process2Spawn, Parameter, ProcessPool};
 pub struct XMLReader {
     targets_collection: ProcessPool,
     benchs_collection: ProcessPool,
+    bench_name: String,
     ann_params: HashMap<String, String>,
     musl_params: Vec<Parameter>,
 }
@@ -37,6 +39,7 @@ impl XMLReader {
 
         let mut bench_p = ProcessPool::new();
         let mut bench_p_x: HashMap<String, String> = HashMap::new();
+		let mut bench_name = String::new();
 
 
         let mut musl_p: Vec<Parameter> = Vec::new();
@@ -94,6 +97,8 @@ impl XMLReader {
                     }
                     
                     if found_bench == true && name.to_string() != tag.to_string() {
+						bench_name=bench_p_x.get("name").unwrap().to_string();
+                        
                         let exec_type_enum: ExecutionType =
                             bench_p_x.get("execution").unwrap().to_string().parse().unwrap();
                             
@@ -116,8 +121,10 @@ impl XMLReader {
                     }
 
                     if found_targ == true && name.to_string() != tag.to_string() {
+                    	
                         let exec_type_enum: ExecutionType =
                             targ_p_x.get("execution").unwrap().to_string().parse().unwrap();
+                            
                         let (host, user)=match exec_type_enum{
                         	ExecutionType::local  =>("".to_string(),"".to_string()),
                         	ExecutionType::remote =>(targ_p_x.get("host").unwrap().to_string(), targ_p_x.get("user").unwrap().to_string()),
@@ -176,7 +183,7 @@ impl XMLReader {
         }
          
 
-		if  ann_p.get("version").unwrap().to_string() != "seqsea" {
+		if  ann_p.get("version").unwrap().to_string() != "seqsa" {
 			
 			while targ_p.size() != ann_p.get("workers").unwrap().to_string().parse::<usize>().unwrap(){
 				println!("S {}",targ_p.size());
@@ -194,6 +201,7 @@ impl XMLReader {
         XMLReader {
             targets_collection: targ_p,
             benchs_collection: bench_p,
+            bench_name: bench_name,
             ann_params: ann_p,
             musl_params: musl_p,
         }
@@ -232,6 +240,9 @@ impl XMLReader {
         return self.benchs_collection.clone();
     }
 
+	pub fn get_bench_name(&self) -> BenchmarkName {
+		return self.bench_name.parse().unwrap()
+    }
 
 
     /***********************************************************************************************************

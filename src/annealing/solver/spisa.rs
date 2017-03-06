@@ -19,7 +19,7 @@
 /// ****************************************************************************
 /// *****************************************************************************
 /// **
-/// Simultaneous Periodically Interacting Searcher (SPIS)
+/// Simultaneous Periodically Interacting Simulated Annealing (SPISA)
 /// *
 /// *****************************************************************************
 /// ****************************************************************************
@@ -53,7 +53,7 @@ use std::time::Duration;
 
 
 #[derive(Debug, Clone)]
-pub struct Spis {
+pub struct Spisa {
     pub min_temp: f64,
     pub max_temp: f64,
     pub max_steps: usize,
@@ -61,7 +61,7 @@ pub struct Spis {
     pub energy_type: EnergyType,
 }
 
-impl Solver for Spis {
+impl Solver for Spisa {
     fn solve(&mut self, problem: &mut Problem, num_workers: usize) -> MrResult {
 
 

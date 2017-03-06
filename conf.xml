@@ -1,59 +1,50 @@
 <target>
-        <m1>
-		    <execution>remote</execution>
-		    <host>10.3.1.1:22</host>
-		    <user>giovanni</user>
-		    <bin>redis-server</bin>
-		    <path>$HOME/scripts/build/master/bin/</path>
-		    <args>/home/giovanni/scripts/build/master/bin/redis.conf --port 12400 --bind 10.3.1.1</args>
-		    <address>10.3.1.1</address>
-		    <port>12400</port>
-	   	</m1>
-	   	<m2>
-		    <execution>remote</execution>
-		    <host>10.3.1.2:22</host>
-		    <user>giovanni</user>
-		    <bin>redis-server</bin>
-		    <path>$HOME/scripts/build/master/bin/</path>
-		    <args>/home/giovanni/scripts/build/master/bin/redis.conf --port 12400 --bind 10.3.1.2</args>
-		    <address>10.3.1.2</address>
-		    <port>12400</port>
-	   	</m2>
-	   	<m3>
-		    <execution>remote</execution>
-		    <host>10.3.1.3:22</host>
-		    <user>giovanni</user>
-		    <bin>redis-server</bin>
-		    <path>$HOME/scripts/build/master/bin/</path>
-		    <args>/home/giovanni/scripts/build/master/bin/redis.conf --port 12400 --bind 10.3.1.3</args>
-		    <address>10.3.1.3</address>
-		    <port>12400</port>
-	   	</m3>
+   	<m1>
+	    <execution>remote</execution>
+	    <host>10.3.1.2:22</host>
+	    <user>giovanni</user>
+	    <bin>httpd</bin>
+	    <path>$HOME/apache/target/httpd/bin/</path>
+	    <args>-k start -D ONE_PROCESS</args>
+	    <address>10.3.1.2</address>
+	    <port>8080</port>
+   	</m1>
+  	 <m2>
+	    <execution>remote</execution>
+	    <host>10.3.1.3:22</host>
+	    <user>giovanni</user>
+	    <bin>httpd</bin>
+	    <path>$HOME/apache/target/httpd/bin/</path>
+	    <args>-k start -D ONE_PROCESS</args>
+	    <address>10.3.1.3</address>
+	    <port>8080</port>
+   	</m2>
 </target>
 
 <bench>
 	<m1>
+	    <name>wrk</name> <!-- Currently supported: wrk(apache), ycsb(redis), memaslap(memcached) -->
 	    <execution>local</execution>
 	    <host></host>
 	    <user></user>
-	    <bin>run_ycsb_bench_2.sh</bin>
+	    <bin>wrk_bench.sh</bin>
 	    <path>/home/giovanni/</path>
-	    <args>127.0.0.1 12600</args>
-	    <address>127.0.0.1</address>
-	    <port>12600</port>
+	    <args>http://10.3.1.2:8080/index.html</args>
+	    <address>10.3.1.2</address>
+	    <port>8080</port>
    	</m1>
 </bench> 
 
 <annealing>
     <max_step>10000</max_step>
     <num_iter>1</num_iter>
-    <min_temp>0.01</min_temp>
-    <max_temp>3000</max_temp>
+    <min_temp>1</min_temp>
+    <max_temp>500000</max_temp>
     <energy>throughput</energy>
     <cooling>exponential</cooling>
     <problem>default</problem>
-    <version>spis</version>
-    <workers>3</workers>
+    <version>spisa</version>
+    <workers>2</workers>
 </annealing>
 
 <musl-params>
@@ -66,9 +57,9 @@
 	</sthreads>
 	<ethreads>
 		<name>MUSL_ETHREADS</name>
-		<default>1</default>
+		<default>7</default>
 		<minimum>1</minimum>
-		<maximum>2</maximum>
+		<maximum>10</maximum>
 		<step>1</step>
 	</ethreads>
 	<ssleep>

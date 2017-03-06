@@ -11,11 +11,11 @@ use std::{thread, env};
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use meter_proxy::MeterProxy;
 use ansi_term::Colour::{Red, Yellow, Green};
 use std::time::Duration;
 use EnergyType;
 use ExecutionType;
+use BenchmarkName;
 use std::net::{TcpStream, Shutdown, IpAddr};
 use std::io::{stdout, Stdout};
 use hwloc::{Topology, CPUBIND_PROCESS, CPUBIND_THREAD, CpuSet, TopologyObject, ObjectType};
@@ -27,8 +27,12 @@ use shared::Process2Spawn;
 use shared::ProcessPool;
 use ctrlc;
 use std::process;
+use energy_eval::output_parser::Parser;
+
 
 pub mod command_executor;
+pub mod output_parser;
+
 
 #[derive(Clone,Debug)]
 pub struct EnergyEval {
@@ -37,36 +41,8 @@ pub struct EnergyEval {
 
 
 static mut notified: bool = false;
-static base_target_port: usize = 12400;
-static base_bench_port: usize = 12600;
 static mut counter: u16 = 0;
 
-
-
-
-#[derive(Clone)]
-struct SpawnedMeterProxy(Arc<Mutex<HashMap<String, MeterProxy>>>);
-impl SpawnedMeterProxy {
-    fn new() -> Self {
-        SpawnedMeterProxy(Arc::new(Mutex::new(HashMap::new())))
-    }
-
-    fn insert(&self, address: String, m_proxy_obj: MeterProxy) {
-        let mut spawned_vec = self.0.lock().unwrap();
-        (*spawned_vec).insert(address, m_proxy_obj);
-    }
-
-    fn spawned(&self, address: String) -> bool {
-        let spawned_vec = self.0.lock().unwrap();
-        (*spawned_vec).contains_key(&address)
-    }
-
-    fn get(&mut self, address: String) -> MeterProxy {
-        let spawned_vec = self.0.lock().unwrap();
-        let res = (*spawned_vec).get(&address).unwrap().clone();
-        res
-    }
-}
 
 
 struct BenchExecTime(Arc<Mutex<u32>>);
@@ -87,7 +63,6 @@ impl BenchExecTime {
 
 
 lazy_static! {
-    static ref spawned_proxies : SpawnedMeterProxy     = {SpawnedMeterProxy::new()};
 	static ref bench_exec_time: BenchExecTime = {BenchExecTime::new()};
     }
 
@@ -107,29 +82,20 @@ impl EnergyEval {
 
 		
 		let target_x =  target_pool.remove(core.to_string());
-		
         let bench_x =  bench_pool.remove(core.to_string());
 
-        // let perf_metrics_handler = PerfMeter::new();
 
-        // Modify the target and benchmark arguments in order to start different instances
-        // on different ports. The annealing core is given to them. This will be sum
-        // to the port number
-        let new_target_args =
-            target_x.clone().args.replace(target_x.port.as_str(),
-                                          (base_target_port + core).to_string().as_str());
-        let new_bench_args =
-            bench_x.clone().args.replace(bench_x.port.as_str(),
-                                         (base_bench_port + core).to_string().as_str());
+        let (target_addr, target_port) = (target_x.clone().address,target_x.clone().port.parse::<u16>().unwrap());
+        let (bench_addr, bench_port) = (bench_x.clone().address, bench_x.clone().port.parse::<u16>().unwrap()); 
+        
+        
+        let mut new_bench_args =
+            bench_x.clone().args.replace(bench_x.port.to_string().as_str(),
+                                         target_port.to_string().as_str());
+        new_bench_args=new_bench_args.replace(bench_x.clone().address.as_str(),target_addr.as_str());
 		
-
-        let (target_addr, target_port) = (target_x.clone().address,
-                                          (base_target_port + core) as u16);
-        let (bench_addr, bench_port) = (bench_x.clone().address, (base_bench_port + core) as u16);
 		
-		println!("Core: {} - {} - {} {} {} ", core, target_addr, target_port, bench_addr,bench_port);
-		
-        let mut target_alive: bool = false;
+        let mut valid_result: bool = false;
 
         // Repeat the execution num_iter times for accurate results
         let mut nrg_vec = Vec::with_capacity(self.xml_reader.ann_num_iter() as usize);
@@ -151,36 +117,6 @@ impl EnergyEval {
             pb.inc();
 
 
-
-            /***********************************************************************************************************
-            /// **
-            /// Start METER-PROXY, which will interpose between the Target and the
-            /// Benchmark apps to extract metrics for the energy evaluation
-            /// *
-            	************************************************************************************************************/
-
-
-            let mut meter_proxy = MeterProxy::new(target_addr.clone(),
-                                                  target_port,
-                                                  bench_addr.clone(),
-                                                  bench_port);
-            let mut meter_proxy_c = meter_proxy.clone();
-
-			let mut key=target_addr.clone()+target_port.to_string().as_str()+bench_addr.clone().as_str()+bench_port.to_string().as_str();
-            
-            if !spawned_proxies.spawned(key.clone()) {
-                spawned_proxies.insert(key.clone(), meter_proxy.clone());
-
-                thread::spawn(move || { meter_proxy.start(); });
-            } else {
-                let mut sp = spawned_proxies.clone();
-                meter_proxy = sp.get(key);
-                meter_proxy_c = meter_proxy.clone();
-            }
-
-
-
-
             /***********************************************************************************************************
             /// **
             /// Launch TARGET Application
@@ -196,7 +132,7 @@ impl EnergyEval {
 	                    let local_cmd_executor = command_executor::LocalCommandExecutor;	
                 		local_cmd_executor.execute_target(target_x.path.clone(),
                                                   target_x.bin.clone(),
-                                                  new_target_args.clone(),
+                                                  target_x.args.clone(),
                                                   &params,
                                                   stop_rx);
                 }
@@ -207,7 +143,7 @@ impl EnergyEval {
                     };
                     remote_cmd_executor.execute_target(target_x.path.clone(),
                                                        target_x.bin.clone(),
-                                                       new_target_args.clone(),
+                                                       target_x.args.clone(),
                                                        &params.clone(),
                                                        stop_rx);
                 }
@@ -217,8 +153,8 @@ impl EnergyEval {
             // Wait for target to startup
             thread::sleep(Duration::from_millis(1000));
             // Check if the target is alive
-            target_alive = self.check_target_alive(target_addr.clone(), target_port as u16);
-            if target_alive == false {
+            valid_result = self.check_target_alive(target_addr.clone(), target_port as u16);
+            if valid_result == false {
 	            target_pool.push(target_x,core.to_string());
         		bench_pool.push(bench_x.clone(),core.to_string());
                 stop_tx.send(true);
@@ -235,60 +171,57 @@ impl EnergyEval {
 			
             let start_time = time::precise_time_ns();
 
+
+
             /***********************************************************************************************************
             /// **
             /// Launch BENCHMARK Application and measure execution time
             /// *
             	************************************************************************************************************/
+			let parser=output_parser::Parser{
+				benchmark_name: self.xml_reader.get_bench_name(),
+			};
+			
 
-
+			let mut energy: Option<f64>=None;
+			
             match bench_x.clone().execution_type {
                 ExecutionType::local => {
                     let local_cmd_executor = command_executor::LocalCommandExecutor;
-                    local_cmd_executor.execute_bench(bench_x.path.clone(),
+                    energy=local_cmd_executor.execute_bench(bench_x.path.clone(),
                                                      bench_x.bin.clone(),
-                                                     new_bench_args.clone());
+                                                     new_bench_args.clone(),
+                                                     parser);
                 }
                 ExecutionType::remote => {
                     let remote_cmd_executor = command_executor::RemoteCommandExecutor {
                         host: bench_x.clone().host,
                         user_4_agent: bench_x.clone().user,
                     };
-                    remote_cmd_executor.execute_bench(bench_x.path.clone(),
+                    energy=remote_cmd_executor.execute_bench(bench_x.path.clone(),
                                                       bench_x.bin.clone(),
-                                                      new_bench_args.clone());
+                                                      new_bench_args.clone(),
+                                                      parser);
                 }
             }
             let end_time = time::precise_time_ns();
             let elapsed_ns: f64 = (end_time - start_time) as f64;
             let elapsed_time = elapsed_ns / 1000000000.0f64;
-
-
-
-
-
-            /***********************************************************************************************************
-            /// **
-            /// ENERGY Evaluation
-            /// *
-            	************************************************************************************************************/
-
-            let nrg: f64 = match self.xml_reader.ann_energy() {
-                EnergyType::throughput => {
-                    // Throughput Evaluation
-                    let num_bytes = meter_proxy_c.get_num_kbytes_rcvd() as f64;
-                    let resp_rate = num_bytes / elapsed_time;
-
-                    resp_rate
-                }
-                EnergyType::latency => {
-                    // Latency Evaluation
-                    meter_proxy_c.get_num_resp()
-
-                }
-            };
-            nrg_vec.push(nrg);
-
+	
+			
+			
+			match energy {
+				Some(v) => nrg_vec.push(v),
+				None => {
+					valid_result=false;
+		            target_pool.push(target_x,core.to_string());
+        			bench_pool.push(bench_x.clone(),core.to_string());
+                	stop_tx.send(true);
+               		break;
+            	}
+			};
+			
+			
 
 		
             /************************************************************************************************************
@@ -296,7 +229,7 @@ impl EnergyEval {
             /// Clean Resources
             /// *
             	*************************************************************************************************************/
-            meter_proxy_c.reset();
+
             //Send signal to target to exit
             target_pool.push(target_x.clone(),core.to_string());
             bench_pool.push(bench_x.clone(),core.to_string());
@@ -307,12 +240,12 @@ impl EnergyEval {
 
         pb.finish();
 
-        if target_alive {
+        if valid_result {
             let sum_nrg: f64 = nrg_vec.iter().sum();
             let avg_nrg = sum_nrg / self.xml_reader.ann_num_iter() as f64;
             match self.xml_reader.ann_energy() {
                 EnergyType::throughput => {
-                    println!("Thread [{}] {} {:.4} KB/s",
+                    println!("Thread [{}] {} {:.4} Ops/s",
                              core,
                              Red.paint("====> Evaluated Avg. Response Rate: "),
                              avg_nrg);
@@ -344,7 +277,7 @@ impl EnergyEval {
         let targ_addr: IpAddr = target_addr.parse()
             .expect("Unable to parse Target Address");
             
-        let target_alive = match TcpStream::connect((targ_addr, target_port)) {
+        let target_alive = match TcpStream::connect(("10.3.1.2", 8080)) {
             Err(e) => {
                 println!("{} The Target Application seems down. Maybe a bad configuration: {}",
                          Red.paint("*****ERROR***** --> "),

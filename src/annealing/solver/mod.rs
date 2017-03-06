@@ -3,9 +3,9 @@ use hwloc::{Topology, ObjectType};
 use annealing::problem::Problem;
 use annealing::solver::common::MrResult;
 
-pub mod seqsea;
-pub mod mips;
-pub mod spis;
+pub mod seqsa;
+pub mod mir;
+pub mod spisa;
 pub mod prsa;
 pub mod common;
 

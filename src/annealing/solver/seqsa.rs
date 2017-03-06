@@ -19,7 +19,7 @@
 /// ****************************************************************************
 /// *****************************************************************************
 /// **
-/// SEQuential SEArcher (SEQSEA)
+/// SEQuential Simulated Annealing (SEQSA)
 /// *
 /// *****************************************************************************
 /// ****************************************************************************
@@ -48,7 +48,7 @@ use pbr::{ProgressBar, MultiBar};
 
 
 #[derive(Debug, Clone)]
-pub struct Seqsea {
+pub struct Seqsa {
     pub min_temp: f64,
     pub max_temp: f64,
     pub max_steps: usize,
@@ -56,7 +56,7 @@ pub struct Seqsea {
     pub energy_type: EnergyType,
 }
 
-impl Solver for Seqsea {
+impl Solver for Seqsa {
     fn solve(&mut self, problem: &mut Problem, num_workers: usize) -> MrResult {
 
 
@@ -162,7 +162,7 @@ impl Solver for Seqsea {
                             EnergyType::latency => -(new_energy - energy), 
                         };
 
-                        if subsequent_rejected > 200 {
+                        if subsequent_rejected > 300 {
                             println!("{} Convergence Reached!!!", Green.paint("[TUNER]"));
                             break;
                         }

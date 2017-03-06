@@ -31,7 +31,7 @@ extern crate lazy_static;
 use ansi_term::Colour::{Green, Yellow};
 use std::collections::HashMap;
 use annealing::problem::Problem;
-use annealing::solver::seqsea::Seqsea;
+use annealing::solver::seqsa::Seqsa;
 use annealing::solver::Solver;
 use annealing::solver::common::MrResult;
 
@@ -39,7 +39,6 @@ use annealing::solver::common::MrResult;
 mod states_gen;
 mod annealing;
 mod energy_eval;
-mod meter_proxy;
 mod results_emitter;
 mod xml_reader;
 mod shared;
@@ -99,8 +98,8 @@ fn main() {
 
 
     let mr_result = match xml_reader.ann_version() {
-        SolverVersion::seqsea => {
-            let mut solver = annealing::solver::seqsea::Seqsea {
+        SolverVersion::seqsa => {
+            let mut solver = annealing::solver::seqsa::Seqsa {
                 min_temp: t_min,
                 max_temp: t_max,
                 max_steps: xml_reader.ann_max_steps(),
@@ -110,8 +109,8 @@ fn main() {
 
             solver.solve(&mut problem,1)
         }
-        SolverVersion::spis => {
-            let mut solver = annealing::solver::spis::Spis {
+        SolverVersion::spisa => {
+            let mut solver = annealing::solver::spisa::Spisa {
                 min_temp: t_min,
                 max_temp: t_max,
                 max_steps: xml_reader.ann_max_steps(),
@@ -121,8 +120,8 @@ fn main() {
 
             solver.solve(&mut problem, xml_reader.ann_workers())
         }
-        SolverVersion::mips => {
-            let mut solver = annealing::solver::mips::Mips {
+        SolverVersion::mir => {
+            let mut solver = annealing::solver::mir::Mir {
                 min_temp: t_min,
                 max_temp: t_max,
                 max_steps: xml_reader.ann_max_steps(),
@@ -159,7 +158,7 @@ fn main() {
 
 /// Check if the temperature is given by the user or if Tmin and Tmax need to be evaluated
 fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Problem) -> (f64, f64) {
-    let num_exec = 5;
+    let num_exec = 10;
 
     let min_temp = match t_min {
         Some(val) => val,
@@ -207,7 +206,12 @@ fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Proble
 }
 
 
-
+#[derive(Debug, Clone,RustcDecodable)]
+pub enum BenchmarkName {
+    wrk,
+    ycsb,
+    memaslap,
+}
 
 
 #[derive(Debug, Clone,RustcDecodable)]
@@ -226,9 +230,9 @@ pub enum CoolingSchedule {
 
 #[derive(Debug, Clone,RustcDecodable)]
 pub enum SolverVersion {
-    seqsea,
-    spis,
-    mips,
+    seqsa,
+    spisa,
+    mir,
     prsa,
 }
 
@@ -245,6 +249,17 @@ pub enum ExecutionType {
     remote,
 }
 
+impl std::str::FromStr for BenchmarkName {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "wrk" => Ok(BenchmarkName::wrk),
+            "ycsb" => Ok(BenchmarkName::ycsb),
+            "memaslap" => Ok(BenchmarkName::memaslap),
+            _ => Err("Benchmark Name - not a valid value"),
+        }
+    }
+}
 
 impl std::str::FromStr for ProblemType {
     type Err = &'static str;
@@ -253,7 +268,7 @@ impl std::str::FromStr for ProblemType {
             "default" => Ok(ProblemType::default),
             "rastr" => Ok(ProblemType::rastr),
             "griew" => Ok(ProblemType::griew),
-            _ => Err("not a valid value"),
+            _ => Err("Problem Type - not a valid value"),
         }
     }
 }
@@ -265,7 +280,7 @@ impl std::str::FromStr for CoolingSchedule {
             "linear" => Ok(CoolingSchedule::linear),
             "exponential" => Ok(CoolingSchedule::exponential),
             "basic_exp_cooling" => Ok(CoolingSchedule::basic_exp_cooling),
-            _ => Err("not a valid value"),
+            _ => Err("Cooling Schedule - not a valid value"),
         }
     }
 }
@@ -274,11 +289,11 @@ impl std::str::FromStr for SolverVersion {
     type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "seqsea" => Ok(SolverVersion::seqsea),
-            "spis" => Ok(SolverVersion::spis),
-            "mips" => Ok(SolverVersion::mips),
+            "seqsa" => Ok(SolverVersion::seqsa),
+            "spisa" => Ok(SolverVersion::spisa),
+            "mir" => Ok(SolverVersion::mir),
             "prsa" => Ok(SolverVersion::prsa),
-            _ => Err("not a valid value"),
+            _ => Err("Solver Version - not a valid value"),
         }
     }
 }
@@ -289,7 +304,7 @@ impl std::str::FromStr for EnergyType {
         match s {
             "throughput" => Ok(EnergyType::throughput),
             "latency" => Ok(EnergyType::latency),
-            _ => Err("not a valid value"),
+            _ => Err("Energy Type - not a valid value"),
         }
     }
 }
@@ -300,7 +315,7 @@ impl std::str::FromStr for ExecutionType {
         match s {
             "local" => Ok(ExecutionType::local),
             "remote" => Ok(ExecutionType::remote),
-            _ => Err("not a valid value"),
+            _ => Err("Execution Type - not a valid value"),
         }
     }
 }
