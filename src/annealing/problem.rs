@@ -29,6 +29,8 @@ use rand::{Rng, thread_rng};
 use std::f64::consts;
 use rand::distributions::Range;
 use rand::distributions::IndependentSample;
+
+
 /**
  * A problem represents something to be solved using simulated
  * annealing, and provides methods to calculate the energy of a

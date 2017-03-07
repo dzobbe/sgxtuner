@@ -32,7 +32,7 @@ impl Parser {
 		************************************************************************************************************/
 	fn parse_ycsb(&self, output: Output) -> Option<f64> {
 		
-			let chars_2_search="Requests/sec:";
+			let chars_2_search="Throughput(ops/sec), ";
 			let offset_wo_space=1;
 			let char_2_delete="";
 			let multiplier_constant=1.0; 
@@ -132,7 +132,7 @@ impl Parser {
 		************************************************************************************************************/
 	fn parse_memaslap(&self, output: Output) -> Option<f64> {
 		
-			let chars_2_search="Requests/sec:";
+			let chars_2_search="Requests/sec:"; 
 			let offset_wo_space=1;
 			let char_2_delete="";
 			let multiplier_constant=1.0; 

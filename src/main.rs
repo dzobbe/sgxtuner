@@ -1,6 +1,4 @@
- #![feature(stmt_expr_attributes)]
-//extern crate x86;
-//extern crate perfcnt;
+
 extern crate rustc_serialize;
 extern crate rand;
 extern crate libc;
@@ -11,7 +9,6 @@ extern crate csv;
 extern crate hwloc;
 extern crate num_cpus;
 extern crate wait_timeout;
-extern crate raw_cpuid;
 extern crate ssh2;
 extern crate xml;
 extern crate ctrlc;
@@ -24,7 +21,6 @@ extern crate futures_cpupool;
 
 #[macro_use]
 extern crate lazy_static;
-//extern crate influent;
 
 
 
@@ -35,7 +31,6 @@ use annealing::solver::seqsa::Seqsa;
 use annealing::solver::Solver;
 use annealing::solver::common::MrResult;
 
-//mod perf_counters;
 mod states_gen;
 mod annealing;
 mod energy_eval;
@@ -46,15 +41,7 @@ mod shared;
 type State = HashMap<String, usize>;
 
 
-/**
-The Annealing Tuner is a tool able to needs in input:
 
-	- The target app
-	- The benchmark app
-	- An initial default parameter configuration
-	- The iteration number r for random selection of initial parameter configuration
-	- Fixed number s of random moves for perturbation
-**/
 /**
 Annealing Tuner Entry Point
 **/
@@ -62,13 +49,16 @@ fn main() {
 
 
 
+  	/**
+	Define the reader of the configuration xml file
+	**/
     let xml_reader = xml_reader::XMLReader::new("conf.xml".to_string());
 
 
     /// Create ParamsConfigurator useful to manage the parameters (or states)
-    /// that the simulated annealing algorithm will explore. ParamsConfigurator set initial default parameters
-    /// defined in the initial-params.txt input file
-    ///
+    /// that the simulated annealing algorithm will explore. It needs the xml_reader to 
+    /// see 
+    
     let params_config = states_gen::ParamsConfigurator::new(xml_reader.clone());
 
 

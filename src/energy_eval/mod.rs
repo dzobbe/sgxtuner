@@ -68,6 +68,7 @@ lazy_static! {
 
 
 impl EnergyEval {
+	
     /**
 	Execute an an instance of the benchmark on the target application for the specific
 	configuration of parameters. The function returns the cost result (in this case the response throughput)
@@ -277,7 +278,7 @@ impl EnergyEval {
         let targ_addr: IpAddr = target_addr.parse()
             .expect("Unable to parse Target Address");
             
-        let target_alive = match TcpStream::connect(("10.3.1.2", 8080)) {
+        let target_alive = match TcpStream::connect((target_addr.as_str(), target_port)) {
             Err(e) => {
                 println!("{} The Target Application seems down. Maybe a bad configuration: {}",
                          Red.paint("*****ERROR***** --> "),

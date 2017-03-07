@@ -24,6 +24,7 @@
 
 <bench>
 	<m1>
+	    <name>memaslap</name> <!-- Currently supported: wrk(apache), ycsb(redis), memaslap(memcached) -->
 	    <execution>local</execution>
 	    <host></host>
 	    <user></user>
@@ -58,7 +59,7 @@
 	<ethreads>
 		<name>MUSL_ETHREADS</name>
 		<default>9</default>
-		<minimum>6</minimum>
+		<minimum>2</minimum>
 		<maximum>10</maximum>
 		<step>1</step>
 	</ethreads>

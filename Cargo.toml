@@ -1,6 +1,6 @@
 [package]
 name = "tuner"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Giovanni Mazzeo mazzeo.gio@gmail.com"]
 
 [[bin]]
@@ -11,7 +11,6 @@ time = "*"
 rustc-serialize = "0.3" 
 rand = "0.3"
 libc = "0.2.0"
-raw-cpuid = "2.0.1"
 ndarray = "0.6.8"
 lazy_static = "0.1.*"
 num = "0.1"
