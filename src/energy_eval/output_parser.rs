@@ -1,7 +1,7 @@
 use std::process::Output;
 use std::str;
 use BenchmarkName;
-
+use std::error::Error;
 
 #[derive(Clone)]
 pub struct Parser {
@@ -10,7 +10,7 @@ pub struct Parser {
 
 
 impl Parser {
-	
+	 
 	
 	pub fn parse(&self, output: Output) -> Option<f64> {
 			
@@ -32,8 +32,8 @@ impl Parser {
 		************************************************************************************************************/
 	fn parse_ycsb(&self, output: Output) -> Option<f64> {
 		
-			let chars_2_search="Throughput(ops/sec), ";
-			let offset_wo_space=1;
+			let chars_2_search="Throughput(ops/sec),";
+			let offset_wo_space=0;
 			let char_2_delete="";
 			let multiplier_constant=1.0; 
 			
@@ -56,6 +56,7 @@ impl Parser {
 			}
 			
 			
+			//println!("REEEE: {:?}",output_str.split_whitespace().nth(base+offset_wo_space));
 		
 			let raw_value=match output_str.split_whitespace().nth(base+offset_wo_space) {
 				Some(v) => v,
@@ -109,7 +110,10 @@ impl Parser {
 		
 			let raw_value=match output_str.split_whitespace().nth(base+offset_wo_space) {
 				Some(v) => v,
-				None => return None,
+				None => {
+					println!("Error during parsing - None value");
+					return None;
+					},
 			};
 			
 			
@@ -117,7 +121,10 @@ impl Parser {
 			
 			let fvalue=match value.parse::<f64>(){
 				Ok(v) => v,
-				Err(e) => return None,
+				Err(e) => {
+					println!("Error during parsing - {:?}",e.description());
+					return None;
+					},
 			};
 			
 			return Some(fvalue*multiplier_constant);
@@ -132,7 +139,7 @@ impl Parser {
 		************************************************************************************************************/
 	fn parse_memaslap(&self, output: Output) -> Option<f64> {
 		
-			let chars_2_search="Requests/sec:"; 
+			let chars_2_search="TPS:"; 
 			let offset_wo_space=1;
 			let char_2_delete="";
 			let multiplier_constant=1.0; 
@@ -156,10 +163,13 @@ impl Parser {
 			}
 			
 			
-		
+
 			let raw_value=match output_str.split_whitespace().nth(base+offset_wo_space) {
 				Some(v) => v,
-				None => return None,
+				None => {
+					println!("Error during parsing - None value");
+					return None;
+					},
 			};
 			
 			
@@ -167,7 +177,10 @@ impl Parser {
 			
 			let fvalue=match value.parse::<f64>(){
 				Ok(v) => v,
-				Err(e) => return None,
+				Err(e) => {
+					println!("Error during parsing - {:?}",e.description());
+					return None;
+					},
 			};
 			
 			return Some(fvalue*multiplier_constant);
