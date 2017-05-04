@@ -24,7 +24,7 @@
 	    <host>10.3.1.1:22</host>
 	    <user>giovanni</user>
 	    <bin>httpd</bin>
-	    <path>$HOME/apache/target/httpd/bin/</path>
+	    <path>$HOME/apache/sgx-apache/target/httpd/bin/</path>
 	    <args>-k start -D ONE_PROCESS</args>
 	    <address>10.3.1.1</address>
 	    <port>8080</port>

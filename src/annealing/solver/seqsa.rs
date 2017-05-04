@@ -162,7 +162,7 @@ impl Solver for Seqsa {
                             EnergyType::latency => -(new_energy - energy), 
                         };
 
-                        if subsequent_rejected > 300 {
+                        if subsequent_rejected > 400 {
                             println!("{} Convergence Reached!!!", Green.paint("[TUNER]"));
                             break;
                         }
