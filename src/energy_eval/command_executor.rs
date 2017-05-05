@@ -48,6 +48,9 @@ impl CommandExecutor for RemoteCommandExecutor {
                       signal_ch: mpsc::Receiver<bool>) {
 
         let host = self.host.clone();
+        let user = self.user.clone();
+        let pwd = self.pwd.clone();
+        
         let params_c = params.clone();
 
         thread::spawn(move || {
@@ -58,7 +61,7 @@ impl CommandExecutor for RemoteCommandExecutor {
             sess.set_allow_sigpipe(true);
             sess.handshake(&tcp).unwrap();
             //sess.userauth_agent(user.as_str()).unwrap();
-            sess.userauth_password(self.user, self.pwd).unwrap();
+            sess.userauth_password(user.as_str(), pwd.as_str()).unwrap();
 
 			
             let mut channel = sess.channel_session().unwrap();
@@ -103,14 +106,15 @@ impl CommandExecutor for RemoteCommandExecutor {
 
     fn execute_bench(&self, bench_path: String, bench_bin: String, bench_args: String, parser: Parser) -> Option<f64>{
         let host = self.host.clone();
-        let user = self.user_4_agent.clone();
+        let user = self.user.clone();
+        let pwd = self.pwd.clone();
         thread::spawn(move || {
             // Connect to the Remote SSH server
             let tcp = TcpStream::connect(host.as_str()).unwrap();
             let mut sess = Session::new().unwrap();
             sess.set_allow_sigpipe(true);
             sess.handshake(&tcp).unwrap();
-            sess.userauth_password(self.user, self.pwd).unwrap();
+            sess.userauth_password(user.as_str(), pwd.as_str()).unwrap();
 
 
             let mut channel = sess.channel_session().unwrap();
