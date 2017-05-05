@@ -42,22 +42,22 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
 
         
     * Annealing - Useful to configure main relevant parameters of the simulated annealing algorithm
-        ** Max Step - The maximum number of steps after which the tuner must stop if it wasn't able to converge 
-        ** Num Iter - The number of runs to perform for each sgx-musl parameter configuration  
-        ** Min Temp - The minimum temperature that the simulated annealing can reach 
-        ** Max Temp - The maximum temperature at which start the exploration. If Min & Max Temp are left empty, the tuner automatically define them. Have a look to the paper for more information.
-        ** Energy - The energy type, i.e., `throughput` (maximization job) or `latency` (minimization job)
-        ** Cooling - The cooling strategy for the temperature, i.e., `exponential`, `linear`, or `basic_exp_cooling`
-        ** Problem - (Don't care about this, it was needed for test purposes. Leave it as `default`)
-        ** Version - The version of simulated annealig to run, i.e., `seqsa`, `spisa`, `mir`, or `prsa`
-        ** Workers - The number of workers (as many as the number of launched Targets)
+        * Max Step - The maximum number of steps after which the tuner must stop if it wasn't able to converge 
+        * Num Iter - The number of runs to perform for each sgx-musl parameter configuration  
+        * Min Temp - The minimum temperature that the simulated annealing can reach 
+        * Max Temp - The maximum temperature at which start the exploration. If Min & Max Temp are left empty, the tuner automatically define them. Have a look to the paper for more information.
+        * Energy - The energy type, i.e., `throughput` (maximization job) or `latency` (minimization job)
+        * Cooling - The cooling strategy for the temperature, i.e., `exponential`, `linear`, or `basic_exp_cooling`
+        * Problem - (Don't care about this, it was needed for test purposes. Leave it as `default`)
+        * Version - The version of simulated annealig to run, i.e., `seqsa`, `spisa`, `mir`, or `prsa`
+        * Workers - The number of workers (as many as the number of launched Targets)
         
     * Musl-Params - Needed to configure the 6 sgx-musl parameters exploration space. More precisely, the user needs to define:
-        ** Name - The sgx-musl parameter name that will be used to declare the correspondent environment variable
-        ** Default - The initial value used
-        ** Minimum - The minimum value that can be assumed
-        ** Maximum - The maximum value that can be assumed
-        ** Step - The step of variation between the minimum and maximum
+        * Name - The sgx-musl parameter name that will be used to declare the correspondent environment variable
+        * Default - The initial value used
+        * Minimum - The minimum value that can be assumed
+        * Maximum - The maximum value that can be assumed
+        * Step - The step of variation between the minimum and maximum
     
   
 4. Run the tuner by launching from sgx-musl-annealing-tuner/Tuner-Code:
