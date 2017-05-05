@@ -14,23 +14,24 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
 
 ## Usage
 
-1. Clone the [source] with `git`:
+* Clone the [source] with `git`:
 
    ```sh
    $ git clone git@sereca.cloudandheat.com:sereca/sgx-musl-annealing-tuner.git
    $ cd sgx-musl-annealing-tuner/Tuner-Code
    ```
-2. Build
+* Build
 
     ```sh
     $ sudo cargo build
     ```
-3. Configure the tuner through the `conf.xml` file. The configuration consists of four main sections:
-
+* Configure the tuner through the `conf.xml` file. The configuration consists of four main sections:
+    
     * Target - This allows to define the Target node (or nodes) that will run the sgx-musl compiled target application. The set of parameters to tune are:
         * Execution - Means the type of execution of the application, if local or remote
         * Host - If remote, the host address where the application will be started must be specified
         * User - If remote, the host username must be specified
+        * Pwd - The password for the correspondent user
         * Bin - The binary name of the target application (e.g. memcached)
         * Path - The path to the binary of the target application
         * Args - The arguments to pass in input to the target application
@@ -38,9 +39,9 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
         * Port - The port on which the target application will listen
     
     * Bench - Equal to the Target configuration section except for:
-        ** Name - Meaning the name of the benchmark which is going to be launched. Currently supported: wrk(apache), ycsb(redis), memaslap(memcached). This is needed to select the correct output parser. Its source code is in `src/energy_eval/output_parser.rs`. It is not a big deal to develop a specific parser function. However, it is needed a way for easily adapt other benchmarks
+        * Name - Meaning the name of the benchmark which is going to be launched. Currently supported: `wrk(apache)`, `ycsb(redis)`, `memaslap(memcached)`. This is needed to select the correct output parser. Its source code is in `src/energy_eval/output_parser.rs`. It is not a big deal to develop a specific parser function. However, it is needed a way for easily adapt other benchmarks
 
-        
+
     * Annealing - Useful to configure main relevant parameters of the simulated annealing algorithm
         * Max Step - The maximum number of steps after which the tuner must stop if it wasn't able to converge 
         * Num Iter - The number of runs to perform for each sgx-musl parameter configuration  
@@ -51,7 +52,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
         * Problem - (Don't care about this, it was needed for test purposes. Leave it as `default`)
         * Version - The version of simulated annealig to run, i.e., `seqsa`, `spisa`, `mir`, or `prsa`
         * Workers - The number of workers (as many as the number of launched Targets)
-        
+
     * Musl-Params - Needed to configure the 6 sgx-musl parameters exploration space. More precisely, the user needs to define:
         * Name - The sgx-musl parameter name that will be used to declare the correspondent environment variable
         * Default - The initial value used
@@ -60,24 +61,25 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
         * Step - The step of variation between the minimum and maximum
     
   
-4. Run the tuner by launching from sgx-musl-annealing-tuner/Tuner-Code:
+* Run the tuner by launching from sgx-musl-annealing-tuner/Tuner-Code:
 
    ```sh
    ./target/debug/annealing-tuner
    ```
 
-5. The tuner logs the stochastic exploration in the `results.csv` file. Such a file will include as many entries as the number of annealing steps conducted. Each entry provides information on the best parameters and energy till that point, and also the measurements for the specific step. Furthermore, the line of the CSV file includes also the results of the evaluation for that step with a specific configuration of parameters.
+* The tuner logs the stochastic exploration in the `results.csv` file. Such a file will include as many entries as the number of annealing steps conducted. Each entry provides information on the best parameters and energy till that point, and also the measurements for the specific step. Furthermore, the line of the CSV file includes also the results of the evaluation for that step with a specific configuration of parameters.
 
 ## Example
 In this example we run the `sgx-musl-annealing-tuner` to launch a parallel job consisting of two `Memcached` Targets and a `Memaslap` Benchmark.
 
-1. Configure the Target 
+* Configure the Target 
 
    ```xml
         <m1>
             <execution>remote</execution>
             <host>10.3.1.1:22</host>
             <user>giovanni</user>
+            <pwd>123</pwd>
             <bin>memcached</bin>
             <path>/home/giovanni/memcached/sgx-memcached/</path>
             <args>-l 10.3.1.1 -p 14200 -t 8</args>
@@ -88,6 +90,7 @@ In this example we run the `sgx-musl-annealing-tuner` to launch a parallel job c
             <execution>remote</execution>
             <host>10.3.1.2:22</host>
             <user>giovanni</user>
+            <pwd>123</pwd>
             <bin>memcached</bin>
             <path>/home/giovanni/memcached/sgx-memcached/</path>
             <args>-l 10.3.1.2 -p 14200 -t 8</args>
@@ -96,20 +99,21 @@ In this example we run the `sgx-musl-annealing-tuner` to launch a parallel job c
         </m2>
    
    ```
-2. Configure the Benchmark  
+* Configure the Benchmark  
 
    ```xml
 	    <name>memaslap</name>
 	    <execution>local</execution>
 	    <host></host>
 	    <user></user>
+        <pwd></pwd>
 	    <bin>memaslap</bin>
 	    <path>/home/giovanni/bin/libmemcached-1.0.18/clients/</path>
 	    <args>-s 10.3.1.2:14200 -t 20s -c 512 -T 16 -S 20s</args>
 	    <address>10.3.1.2</address>
 	    <port>14200</port>   
    ```
-3. Configure the Simulated Annealing algorithm
+* Configure the Simulated Annealing algorithm
 
    ```xml
         <max_step>10000</max_step>
@@ -122,7 +126,7 @@ In this example we run the `sgx-musl-annealing-tuner` to launch a parallel job c
         <version>spisa</version>
         <workers>2</workers>
    ```
-4. Configure the `sgx-musl` parameters
+* Configure the `sgx-musl` parameters
 
    ```xml
        <musl-params>
@@ -171,7 +175,7 @@ In this example we run the `sgx-musl-annealing-tuner` to launch a parallel job c
     </musl-params>
    
    ```
-2.  Run the tuner. 
+*  Run the tuner. 
 
    ```sh
    $ ./target/debug/annealing-tuner 
