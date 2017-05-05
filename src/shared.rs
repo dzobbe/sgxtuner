@@ -8,6 +8,7 @@ pub struct Process2Spawn {
     pub execution_type: ExecutionType,
     pub host: String,
     pub user: String,
+    pub pwd: String,
     pub bin: String,
     pub path: String,
     pub args: String,

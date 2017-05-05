@@ -106,10 +106,16 @@ impl XMLReader {
                         	ExecutionType::local  =>("".to_string(),"".to_string()),
                         	ExecutionType::remote =>(bench_p_x.get("host").unwrap().to_string(), bench_p_x.get("user").unwrap().to_string()),
                         };
+                        
+                        let pwd=match exec_type_enum{
+                        	ExecutionType::local  =>"".to_string(),
+                        	ExecutionType::remote =>bench_p_x.get("pwd").unwrap().to_string(),
+                        };
                         let mut bench_2_spawn = Process2Spawn {
                             execution_type: exec_type_enum,
                             host: host,
                             user: user,
+                            pwd: pwd,
                             bin: bench_p_x.get("bin").unwrap().to_string(),
                             path: bench_p_x.get("path").unwrap().to_string(),
                             args: bench_p_x.get("args").unwrap().to_string(),
@@ -129,11 +135,16 @@ impl XMLReader {
                         	ExecutionType::local  =>("".to_string(),"".to_string()),
                         	ExecutionType::remote =>(targ_p_x.get("host").unwrap().to_string(), targ_p_x.get("user").unwrap().to_string()),
                         };
+                        let pwd=match exec_type_enum{
+                        	ExecutionType::local  =>"".to_string(),
+                        	ExecutionType::remote =>targ_p_x.get("pwd").unwrap().to_string(),
+                        };
                         
                         let mut targ_2_spawn = Process2Spawn {
                             execution_type: exec_type_enum,
                             host: host,
                             user: user,
+                            pwd: pwd,
                             bin: targ_p_x.get("bin").unwrap().to_string(),
                             path: targ_p_x.get("path").unwrap().to_string(),
                             args: targ_p_x.get("args").unwrap().to_string(),
@@ -295,3 +306,4 @@ impl XMLReader {
         return solver_version;
     }
 }
+
