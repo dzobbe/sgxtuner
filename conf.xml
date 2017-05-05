@@ -4,6 +4,7 @@
             <execution>remote</execution>
             <host>10.3.1.1:22</host>
             <user>giovanni</user>
+            <pwd>123</pwd>
             <bin>memcached</bin>
             <path>/home/giovanni/memcached/sgx-memcached/</path>
             <args>-l 10.3.1.1 -p 14200 -t 8</args>
@@ -18,6 +19,7 @@
 	    <execution>local</execution>
 	    <host></host>
 	    <user></user>
+        <pwd></pwd>
 	    <bin>memaslap</bin>
 	    <path>/home/giovanni/bin/libmemcached-1.0.18/clients/</path>
 	    <args>-s 10.3.1.2:14200 -t 20s -c 512 -T 16 -S 20s</args>
