@@ -140,7 +140,8 @@ impl EnergyEval {
                 ExecutionType::remote => {
                     let remote_cmd_executor = command_executor::RemoteCommandExecutor {
                         host: target_x.clone().host,
-                        user_4_agent: target_x.clone().user,
+                        user: target_x.clone().user,
+                        pwd: target_x.clone().user,
                     };
                     remote_cmd_executor.execute_target(target_x.path.clone(),
                                                        target_x.bin.clone(),
@@ -197,7 +198,8 @@ impl EnergyEval {
                 ExecutionType::remote => {
                     let remote_cmd_executor = command_executor::RemoteCommandExecutor {
                         host: bench_x.clone().host,
-                        user_4_agent: bench_x.clone().user,
+                        user: bench_x.clone().user,
+                        pwd: bench_x.clone().user,
                     };
                     energy=remote_cmd_executor.execute_bench(bench_x.path.clone(),
                                                       bench_x.bin.clone(),

@@ -29,7 +29,8 @@ static mut first : bool = true;
 #[derive(Clone)]
 pub struct RemoteCommandExecutor {
     pub host: String,
-    pub user_4_agent: String,
+    pub user: String,
+    pub pwd: String,
 }
 
 #[derive(Debug, Clone)]
@@ -47,7 +48,6 @@ impl CommandExecutor for RemoteCommandExecutor {
                       signal_ch: mpsc::Receiver<bool>) {
 
         let host = self.host.clone();
-        let user = self.user_4_agent.clone();
         let params_c = params.clone();
 
         thread::spawn(move || {
@@ -58,7 +58,7 @@ impl CommandExecutor for RemoteCommandExecutor {
             sess.set_allow_sigpipe(true);
             sess.handshake(&tcp).unwrap();
             //sess.userauth_agent(user.as_str()).unwrap();
-            sess.userauth_password("giovanni", "123").unwrap();
+            sess.userauth_password(self.user, self.pwd).unwrap();
 
 			
             let mut channel = sess.channel_session().unwrap();
@@ -110,7 +110,7 @@ impl CommandExecutor for RemoteCommandExecutor {
             let mut sess = Session::new().unwrap();
             sess.set_allow_sigpipe(true);
             sess.handshake(&tcp).unwrap();
-            sess.userauth_agent(user.as_str()).unwrap();
+            sess.userauth_password(self.user, self.pwd).unwrap();
 
 
             let mut channel = sess.channel_session().unwrap();
