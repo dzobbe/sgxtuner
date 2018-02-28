@@ -1,86 +1,88 @@
 
-<target>
-       	<m2>
-            <execution>remote</execution>
-            <host>10.3.1.1:22</host>
-            <user>giovanni</user>
-            <pwd>123</pwd>
-            <bin>memcached</bin>
-            <path>/home/giovanni/memcached/sgx-memcached/</path>
-            <args>-l 10.3.1.1 -p 14200 -t 8</args>
-            <address>10.3.1.1</address>
-            <port>14200</port>
-        </m2>
-</target>
+<builder-script>
+    <default>./build_tuner.sh</default>
+    <fulltag>sconecuratedimages/nginx:tuner</fulltag>
+    <envfile>.ENV</envfile>
+</builder-script>
 
-<bench>
-	<m1>
-	    <name>memaslap</name> <!-- Currently supported: wrk(apache), ycsb(redis), memaslap(memcached) -->
-	    <execution>local</execution>
-	    <host></host>
-	    <user></user>
-        <pwd></pwd>
-	    <bin>memaslap</bin>
-	    <path>/home/giovanni/bin/libmemcached-1.0.18/clients/</path>
-	    <args>-s 10.3.1.2:14200 -t 20s -c 512 -T 16 -S 20s</args>
-	    <address>10.3.1.2</address>
-	    <port>14200</port>
-   	</m1>
-</bench>
-
-<annealing>
+<tuner-params>
     <max_step>10000</max_step>
     <num_iter>1</num_iter>
-    <min_temp></min_temp>
-    <max_temp></max_temp>
+    <min_temp>1</min_temp>
+    <max_temp>10000</max_temp>
     <energy>throughput</energy>
     <cooling>exponential</cooling>
-    <problem>default</problem>
     <version>seqsa</version>
     <workers>1</workers>
-</annealing>
+    <benchmark>Wrk</benchmark>
+</tuner-params>
 
-<musl-params>
-        <sthreads>
+<target-params>
+        <int-parameter>
                 <name>MUSL_STHREADS</name>
                 <default>32</default>
                 <minimum>20</minimum>
                 <maximum>70</maximum>
                 <step>5</step>
-        </sthreads>
-        <ethreads>
+                <level>runtime</level>
+        </int-parameter>
+        <int-parameter>
                 <name>MUSL_ETHREADS</name>
                 <default>4</default>
                 <minimum>1</minimum>
                 <maximum>10</maximum>
                 <step>1</step>
-        </ethreads>
-        <ssleep>
+                <level>runtime</level>
+        </int-parameter>
+        <int-parameter>
                 <name>MUSL_SSLEEP</name>
                 <default>3400</default>
                 <minimum>2800</minimum>
                 <maximum>4200</maximum>
                 <step>100</step>
-        </ssleep>
-        <esleep>
+                <level>runtime</level>
+        </int-parameter>
+        <int-parameter>
                 <name>MUSL_ESLEEP</name>
                 <default>15000</default>
                 <minimum>12000</minimum>
                 <maximum>20000</maximum>
                 <step>1000</step>
-        </esleep>
-        <sspins>
+                <level>runtime</level>
+        </int-parameter>
+        <int-parameter>
                 <name>MUSL_SSPINS</name>
                 <default>80</default>
                 <minimum>50</minimum>
                 <maximum>140</maximum>
                 <step>10</step>
-        </sspins>
-        <espins>
+                <level>runtime</level>
+        </int-parameter>
+        <int-parameter>
                 <name>MUSL_ESPINS</name>
                 <default>4800</default>
                 <minimum>3400</minimum>
                 <maximum>6400</maximum>
                 <step>200</step>
-        </espins>
-</musl-params>
+                <level>runtime</level>
+        </int-parameter>
+        
+        <int-parameter>
+			   <name>client_header_buffer_size</name>
+			   <default>1000</default>
+			   <minimum>500</minimum>
+			   <maximum>64000</maximum>
+               <percent>50</percent>
+			   <level>service-config</level>
+		</int-parameter>
+
+        <bool-parameter>
+			   <name>http_ssl_module</name>
+			   <default>true</default>
+			   <true>--with-http_ssl_module</true>
+			   <false>--without-http_ssl_module</false>
+			   <level>compile</level>
+		</bool-parameter>
+</target-params>
+
+

@@ -1,0 +1,8 @@
+[package]
+name = "agent_target"
+version = "0.1.0"
+authors = ["gmazzeo <giovanni.mazzeo@uniparthenope.it>"]
+
+[dependencies]
+zmq= { git = "https://github.com/dzobbe/rust-zmq.git"}
+xml-rs="*"

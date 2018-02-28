@@ -1,0 +1,94 @@
+version: '2'
+services:
+
+   core:
+      build: 
+         context: ./core
+         dockerfile: ./Dockerfile
+      volumes:
+         - ./:/source
+      networks:
+        app_net:
+          ipv4_address: 172.25.0.23
+      command: bash -c "pushd core && cargo build && ./target/debug/annealing-tuner"
+      environment:
+          - RUST_BACKTRACE=1
+      #depends_on:
+          #- agent_bench_0
+          #- agent_target_0
+          
+          
+   agent_target_0:
+      build: 
+           context: ./agent_target
+           dockerfile: ./Dockerfile
+      volumes:
+         - ./:/source
+         - /etc/nginx:/etc/nginx 
+      networks:
+        app_net:
+          ipv4_address: 172.25.0.25
+      expose:
+         - 1234
+      command: bash -c "pushd agent_target && cargo build && ./target/debug/agent_target"
+      environment:
+          - SERVICE_CONF_DIR=/etc/nginx
+          - OWN_ADDRESS=172.25.0.25:1234
+          - RUST_BACKTRACE=1
+          
+
+     
+   agent_bench_0:
+       build: 
+             context: ./agent_bench
+             dockerfile: ./Dockerfile
+       volumes:
+           - ./:/source
+           - ./benchmark_dir:/benchmark_dir
+       networks:
+          app_net:
+            ipv4_address: 172.25.0.26
+       expose:
+           - 1234
+       command: bash -c "pushd agent_bench && cargo build && ./target/debug/agent_bench"
+       environment:
+          - OWN_ADDRESS=172.25.0.26:1234
+          - BIN_PATH=/benchmark_dir/ycsb
+          - BIN_ARGS=10.3.1.1 12600
+          - BENCH_TYPE=ycsb
+          - RUST_BACKTRACE=1
+          
+          
+   influxdb:
+       image: influxdb:0.12
+       ports:
+        - "8083:8083"
+        - "8086:8086"
+        - "8090:8090"
+       volumes:
+         - ./influx_db:/var/lib/influxdb
+       networks:
+        app_net:
+          ipv4_address: 172.25.0.99  
+         
+   chronograf:
+        image: chronograf:0.12
+        volumes:
+          - ./data/chronograf:/var/lib/chronograf
+        ports:
+          - "10000:10000"
+        networks:
+          app_net:
+            ipv4_address: 172.25.0.100
+        links:
+          - influxdb
+            
+       
+networks:
+     app_net:
+       driver: bridge
+       ipam:
+         driver: default
+         config:
+         -
+           subnet: 172.25.0.0/24     
