@@ -1,17 +1,17 @@
 # SGXTuner
-SGXTuner is a distributed tuning system that uses stochastic optimization to enhance the performance of applications hardened with SGX. More precisely, the tuner leverages a self-implemented parallel Simulated Annealing (https://en.wikipedia.org/wiki/Simulated_annealing) algorithm to find a near-optimal parameters configuration of SGX-enabled libc libraries, which are the basis of current approaches for executing unmodified legacy applications on SGX. Different SA algorithm are implemented, these are:
+SGXTuner is a distributed tuning system that uses stochastic optimization to enhance the performance of applications hardened with SGX. More precisely, the tuner leverages a self-implemented parallel [Simulated Annealing](https://en.wikipedia.org/wiki/Simulated_annealing) algorithm to find a near-optimal parameters configuration of SGX-enabled libc libraries, which are the basis of current approaches for executing unmodified legacy applications on SGX. Different SA algorithm are implemented, these are:
 
    * SEQSA  - This is the standard simulated annealing solver, which searches for the best solution in a sequential way.
    * SPISA - This a parallelized version of the simulated annealing in which the different worker machines explore in parallel a specific set of neighborhoods composed by indipendent configurations and periodically exchange information.
    * MIPS - This additional parallelized version of the solver starts from different initial parameter configurations and executes multiple indipendent workers, which don't need to exchange information except for the final comparison of worker results.
-   * PRSA - This last parallel version, instead, applies the "Parallel Recombinative Simulated Annealing" algorithm, which is combination of the Genetic Crossover algorithm and Simulated Annealing (More information are in the following paper https://pdfs.semanticscholar.org/3504/9bedbf4ee018a4b987beaa68394646e3fd47.pdf TOCHANGE PAPER)
+   * PRSA - This last parallel version, instead, applies the "Parallel Recombinative Simulated Annealing" algorithm, which is combination of the Genetic Crossover algorithm and Simulated Annealing 
 
-A 6-parameters tuning activity has been performed for a particular extended libc library, namely sgx-musl, which underlies the widely accepted SGX-secured containers, i.e., SCONE (https://www.usenix.org/system/files/conference/osdi16/osdi16-arnautov.pdf)
+A 6-parameters tuning activity has been performed for a particular extended libc library, namely sgx-musl, which underlies the widely accepted SGX-secured containers, i.e., [SCONE](https://www.usenix.org/system/files/conference/osdi16/osdi16-arnautov.pdf)
 
 ## Requirements
 Of course, you will need Rust installed. If you haven't already, get it here: [rust-lang.org](https://www.rust-lang.org). Also you need [Cargo](https://crates.io) to easily compile. The rustc compiler version required is the 1.15.0-nightly.
 
-
+You also need [docker](https://github.com/docker) and [docker-compose](https://github.com/docker/compose)
 
 ## Usage
 
@@ -24,7 +24,7 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
 2. Build
 
     ```sh
-    $ sudo cargo build
+    $ docker-compose build
     ```
 3. Configure the tuner through the `conf.xml` file. The configuration consists of four main sections:
 
@@ -175,12 +175,11 @@ In this example we run the `sgx-musl-annealing-tuner` to launch a parallel job c
 2.  Run the tuner. 
 
    ```sh
-   $ ./target/debug/annealing-tuner 
+   $ docker-compose up 
    ```
 
 ## Open Issues and Future Work
 The tuner initially made use of a meter proxy which allowed to run any target and benchmark without caring of the output (e.g. the throughput) collection. This solution was abandoned since the impact on the measurements was not negligibile.
-Better improve the 
 
 ## License
 
