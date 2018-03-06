@@ -18,8 +18,8 @@ Of course, you will need Rust installed. If you haven't already, get it here: [r
 1. Clone the [source] with `git`:
 
    ```sh
-   $ git clone git@sereca.cloudandheat.com:sereca/sgx-musl-annealing-tuner.git
-   $ cd sgx-musl-annealing-tuner/Tuner-Code
+   $ git clone https://github.com/dzobbe/sgxtuner.git
+   $ cd sgxtuner/
    ```
 2. Build
 
