@@ -2,7 +2,7 @@ FROM zeromq/zeromq
 MAINTAINER Giovanni Mazzeo <giovanni.mazzeo@uniparthenope.it>
 
 ENV USER root
-ENV RUST_VERSION=1.18.0
+ENV RUST_VERSION=1.38.0
 
 
 
