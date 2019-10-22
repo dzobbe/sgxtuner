@@ -16,18 +16,18 @@
 ///  limitations under the License.
 /// ///////////////////////////////////////////////////////////////////////////
 
-/// ****************************************************************************
-/// *****************************************************************************
-/// **
-/// Parallel Recombinative Simulated Annealing (PRSA)
-/// *
-/// *****************************************************************************
-/// ****************************************************************************
+// ****************************************************************************
+// *****************************************************************************
+// **
+// Parallel Recombinative Simulated Annealing (PRSA)
+// *
+// *****************************************************************************
+// ****************************************************************************
 use annealing::solver::Solver;
 use annealing::problem::Problem;
 use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
 use annealing::solver::common;
-use annealing::solver::common::{MrResult,IntermediateResults};
+use annealing::solver::common::{MrResult, IntermediateResults};
 use results_emitter;
 use results_emitter::{Emitter, Emitter2File};
 
@@ -76,29 +76,29 @@ impl Solver for Prsa {
         let mut population =
             common::StatesPool::new_with_val(problem.get_population(self.population_size));
 
-		let mut subsequent_rejected=0;
-   		
+        let mut subsequent_rejected = 0;
+
         let mut elapsed_steps = common::SharedGenericCounter::new();
         let mut temperature =
             common::Temperature::new(self.max_temp, cooler.clone(), self.cooling_schedule.clone());
         let threads_res = common::ThreadsResults::new();
 
-        /// *********************************************************************************************************
+        // *********************************************************************************************************
         let mut start_time = time::precise_time_ns();
-        let mut rng=rand::thread_rng();
+        let mut rng = rand::thread_rng();
         let mut initial_state = problem.initial_state();
         let mut nrg = match problem.energy(&initial_state.clone(), 0, rng.clone()) {
             Some(nrg) => nrg,
             None => panic!("The initial configuration does not allow to calculate the energy"),
         };
-        
+
         let mut elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
         let mut final_best_res = MrResult {
             energy: nrg,
             state: initial_state,
         };
-        
+
         // Channel for receiving results from worker threads and send them to the file writer.
         let (tx, rx) = channel::<IntermediateResults>();
         let mut results_emitter = Emitter2File::new("0".to_string());
@@ -108,41 +108,47 @@ impl Solver for Prsa {
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
             match rx.recv() {
                 Ok(res) => {
-                    results_emitter.send_update(temperature_c.get(),
-                                                elapsed_time,
-                                                0.0,
-                                                res.last_nrg,
-                                                &res.last_state,
-                                                res.best_nrg,
-                                                &res.best_state,
-                                                elapsed_steps_c.get());
+                    results_emitter.send_update(
+                        temperature_c.get(),
+                        elapsed_time,
+                        0.0,
+                        res.last_nrg,
+                        &res.last_state,
+                        res.best_nrg,
+                        &res.best_state,
+                        elapsed_steps_c.get(),
+                    );
                 }
                 Err(e) => {} 
             }
         });
-        
-        
+
+
         'outer: loop {
-        	
-        	let mut mb = MultiBar::new();
+
+            let mut mb = MultiBar::new();
 
 
-            if elapsed_steps.get() > self.max_steps || subsequent_rejected > 20{
+            if elapsed_steps.get() > self.max_steps || subsequent_rejected > 20 {
                 break 'outer;
             }
 
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
-            println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
+            println!(
+                "{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
                       time to Complete: {:.2} Hrs",
-                     Green.paint("[TUNER]"),
-                     elapsed_steps.get(),
-                     elapsed_steps.get() as f64 / (self.max_steps as f64) * 100.0,
-                     elapsed_time);
-        	println!("{} Best Energy: {:.4}",
-                     Green.paint("[TUNER]"),
-                     final_best_res.energy);
+                Green.paint("[TUNER]"),
+                elapsed_steps.get(),
+                elapsed_steps.get() as f64 / (self.max_steps as f64) * 100.0,
+                elapsed_time
+            );
+            println!(
+                "{} Best Energy: {:.4}",
+                Green.paint("[TUNER]"),
+                final_best_res.energy
+            );
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------------------------------------------"));
 
 
@@ -153,8 +159,9 @@ impl Solver for Prsa {
 
             // Divide the population in num_workers chunks
             let chunk_size = (self.population_size as f64 / num_workers as f64).floor() as usize;
-            let mut chunks: Vec<Vec<State>> =
-                (0..num_workers).map(|_| Vec::with_capacity(num_workers)).collect();
+            let mut chunks: Vec<Vec<State>> = (0..num_workers)
+                .map(|_| Vec::with_capacity(num_workers))
+                .collect();
             for i in 0..num_workers {
                 for j in 0..chunk_size {
                     match population.pop() {
@@ -188,150 +195,159 @@ impl Solver for Prsa {
 
 
                 let mut pb = mb.create_bar((len_subpop / 2) as u64);
-				let tx_c=tx.clone();
-	       		let mut final_best_res_c=final_best_res.clone();
-                /*********************************************************************************************************/
+                let tx_c = tx.clone();
+                let mut final_best_res_c = final_best_res.clone();
+                //*********************************************************************************************************
                 th_handlers.push(thread::spawn(move || {
                     pb.show_message = true;
-       				let mut rng_c = rand::thread_rng();
+                    let mut rng_c = rand::thread_rng();
 
                     let mut new_sub_population: Vec<State> = Vec::with_capacity(len_subpop);
 
                     let mut results: Vec<common::MrResult> = Vec::new();
 
                     for step in 0..len_subpop / 2 {
-                        pb.message(&format!("TID [{}] - Sub-Population Exploration Status - ",
-                                            core));
-                        
-						let mut parent_died=false;
-						let mut child_died=false;
+                        pb.message(&format!(
+                            "TID [{}] - Sub-Population Exploration Status - ",
+                            core
+                        ));
 
-                        let (parent_1, parent_2) = get_parents(&mut sub_population_c.to_vec(),rng_c.clone());
+                        let mut parent_died = false;
+                        let mut child_died = false;
 
-                        let (cost_parent_1,cost_parent_2) = match problem_c.energy(&parent_1, core, rng_c.clone()) {
-                        	Some(c_parent_1) => {
-                        		let intermediate_res=IntermediateResults{
-				            			last_nrg: c_parent_1,
-				            			last_state: parent_1.clone(),
-				            			best_nrg: final_best_res_c.clone().energy,
-				            			best_state: final_best_res_c.clone().state,
-			            		};
-			            		tx_c.send(intermediate_res);
-		
-		                        let c_parent_2 = match problem_c.energy(&parent_2, core, rng_c.clone()){
-		                        	Some(c_p_2) => {
-		                        		let intermediate_res=IntermediateResults{
-						            			last_nrg: c_p_2,
-						            			last_state: parent_2.clone(),
-						            			best_nrg: final_best_res_c.clone().energy,
-						            			best_state: final_best_res_c.clone().state,
-					            		};
-					            		tx_c.send(intermediate_res);
-			            		
-		                        		c_p_2
-	                        		},
-		                        	None => {
-		                        		parent_died=true;
-		                        		-1.0 
-	                        		},
-		                        };
-								
-			            		(c_parent_1,c_parent_2)
-                        	},
-                        	None => {
-                        		parent_died=true;
-                    			(-1.0,-1.0)
-                    		},
-                        };
-						                    
- 						
-	            		
+                        let (parent_1, parent_2) =
+                            get_parents(&mut sub_population_c.to_vec(), rng_c.clone());
+
+                        let (cost_parent_1, cost_parent_2) =
+                            match problem_c.energy(&parent_1, core, rng_c.clone()) {
+                                Some(c_parent_1) => {
+                                    let intermediate_res = IntermediateResults {
+                                        last_nrg: c_parent_1,
+                                        last_state: parent_1.clone(),
+                                        best_nrg: final_best_res_c.clone().energy,
+                                        best_state: final_best_res_c.clone().state,
+                                    };
+                                    tx_c.send(intermediate_res);
+
+                                    let c_parent_2 =
+                                        match problem_c.energy(&parent_2, core, rng_c.clone()) {
+                                            Some(c_p_2) => {
+                                                let intermediate_res = IntermediateResults {
+                                                    last_nrg: c_p_2,
+                                                    last_state: parent_2.clone(),
+                                                    best_nrg: final_best_res_c.clone().energy,
+                                                    best_state: final_best_res_c.clone().state,
+                                                };
+                                                tx_c.send(intermediate_res);
+
+                                                c_p_2
+                                            }
+                                            None => {
+                                                parent_died = true;
+                                                -1.0
+                                            }
+                                        };
+
+                                    (c_parent_1, c_parent_2)
+                                }
+                                None => {
+                                    parent_died = true;
+                                    (-1.0, -1.0)
+                                }
+                            };
+
+
+
                         let (mut child_1, mut child_2) =
                             generate_children(&mut problem_c, &parent_1, &parent_2, rng_c.clone());
 
-                        let (cost_child_1,cost_child_2) = match problem_c.energy(&child_1, core, rng_c.clone()) {
-                        	Some(c_child_1) => {
-                        		let intermediate_res=IntermediateResults{
-				            			last_nrg: c_child_1,
-				            			last_state: child_1.clone(),
-				            			best_nrg: final_best_res_c.clone().energy,
-				            			best_state: final_best_res_c.clone().state,
-			            		};
-			            		tx_c.send(intermediate_res);
-		
-		                        let c_child_2 = match problem_c.energy(&child_2, core, rng_c.clone()){
-		                        	Some(c_c_2) => {
-		                        		let intermediate_res=IntermediateResults{
-						            			last_nrg: c_c_2,
-						            			last_state: child_2.clone(),
-						            			best_nrg: final_best_res_c.clone().energy,
-						            			best_state: final_best_res_c.clone().state,
-					            		};
-					            		tx_c.send(intermediate_res);
-			            		
-		                        		c_c_2
-	                        		},
-		                        	None => {
-		                        		child_died=true;
-	                        			-1.0
-	                        		},
-		                        };
-								
-			            		(c_child_1,c_child_2)
-                        	},
-                        	None => {
-                        		child_died=true;
-                    			(-1.0,-1.0) 
-                    		},
-                        };
+                        let (cost_child_1, cost_child_2) =
+                            match problem_c.energy(&child_1, core, rng_c.clone()) {
+                                Some(c_child_1) => {
+                                    let intermediate_res = IntermediateResults {
+                                        last_nrg: c_child_1,
+                                        last_state: child_1.clone(),
+                                        best_nrg: final_best_res_c.clone().energy,
+                                        best_state: final_best_res_c.clone().state,
+                                    };
+                                    tx_c.send(intermediate_res);
+
+                                    let c_child_2 =
+                                        match problem_c.energy(&child_2, core, rng_c.clone()) {
+                                            Some(c_c_2) => {
+                                                let intermediate_res = IntermediateResults {
+                                                    last_nrg: c_c_2,
+                                                    last_state: child_2.clone(),
+                                                    best_nrg: final_best_res_c.clone().energy,
+                                                    best_state: final_best_res_c.clone().state,
+                                                };
+                                                tx_c.send(intermediate_res);
+
+                                                c_c_2
+                                            }
+                                            None => {
+                                                child_died = true;
+                                                -1.0
+                                            }
+                                        };
+
+                                    (c_child_1, c_child_2)
+                                }
+                                None => {
+                                    child_died = true;
+                                    (-1.0, -1.0)
+                                }
+                            };
 
                         // Compare cost of parent_1 with cost of child_2
                         let range = Range::new(0.0, 1.0);
-	                    let (best_state_1, best_cost_1)={
-							if parent_died==false && child_died==false{
-		                    	let de_p1_c2 = match nrg_type {
-		                            EnergyType::throughput => cost_parent_1 - cost_child_2,
-		                            EnergyType::latency => -(cost_parent_1 - cost_child_2), 
-		                        };
-	                            if range.ind_sample(&mut rng_c) <
-	                               1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp()) {
-	                                (parent_1.clone(), cost_parent_1)
-	                            } else {
-	                                (child_2.clone(), cost_child_2)
-	                            }
-                            }else if parent_died==true{
-							 	(child_1.clone(),cost_child_1)
-							}else {
-							 	(parent_1.clone(),cost_parent_1)
-							}
-							
-	                    };
-	                   
-	                    
-	                    let (best_state_2, best_cost_2)={
-							if parent_died==false && child_died==false{
-		                    	 // Compare cost of parent_2 with cost of child_1
-		                        let de_p2_c1 = match nrg_type {
-		                            EnergyType::throughput => cost_parent_2 - cost_child_1,
-		                            EnergyType::latency => -(cost_parent_2 - cost_child_1), 
-		                        };
-	                            if range.ind_sample(&mut rng_c) <
-	                               1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp()) {
-	                                (parent_2.clone(), cost_parent_2)
-	                            } else {
-	                                (child_1.clone(), cost_child_1)
-	                            }
-                            }else if parent_died==true{
-							 	(child_2.clone(),cost_child_2)
-							}else{
-							 	(parent_2.clone(),cost_parent_2)
-							}
-							
-	                    };
-	                        							            		
-	            	
-						new_sub_population.push(best_state_1.clone());
-	                    new_sub_population.push(best_state_2.clone());
+                        let (best_state_1, best_cost_1) = {
+                            if parent_died == false && child_died == false {
+                                let de_p1_c2 = match nrg_type {
+                                    EnergyType::throughput => cost_parent_1 - cost_child_2,
+                                    EnergyType::latency => -(cost_parent_1 - cost_child_2), 
+                                };
+                                if range.ind_sample(&mut rng_c) <
+                                    1.0 / (1.0 + (de_p1_c2 / temperature_c.get()).exp())
+                                {
+                                    (parent_1.clone(), cost_parent_1)
+                                } else {
+                                    (child_2.clone(), cost_child_2)
+                                }
+                            } else if parent_died == true {
+                                (child_1.clone(), cost_child_1)
+                            } else {
+                                (parent_1.clone(), cost_parent_1)
+                            }
+
+                        };
+
+
+                        let (best_state_2, best_cost_2) = {
+                            if parent_died == false && child_died == false {
+                                // Compare cost of parent_2 with cost of child_1
+                                let de_p2_c1 = match nrg_type {
+                                    EnergyType::throughput => cost_parent_2 - cost_child_1,
+                                    EnergyType::latency => -(cost_parent_2 - cost_child_1), 
+                                };
+                                if range.ind_sample(&mut rng_c) <
+                                    1.0 / (1.0 + (de_p2_c1 / temperature_c.get()).exp())
+                                {
+                                    (parent_2.clone(), cost_parent_2)
+                                } else {
+                                    (child_1.clone(), cost_child_1)
+                                }
+                            } else if parent_died == true {
+                                (child_2.clone(), cost_child_2)
+                            } else {
+                                (parent_2.clone(), cost_parent_2)
+                            }
+
+                        };
+
+
+                        new_sub_population.push(best_state_1.clone());
+                        new_sub_population.push(best_state_2.clone());
 
                         let (iter_best_state, iter_best_cost) = match nrg_type {
                             EnergyType::throughput => {
@@ -354,12 +370,12 @@ impl Solver for Prsa {
                             energy: iter_best_cost,
                             state: iter_best_state.clone(),
                         });
-                        
-                       
-                        
+
+
+
                         temperature_c.update(elapsed_steps_c.get());
                         elapsed_steps_c.increment();
-                   		pb.inc();
+                        pb.inc();
 
                     }
 
@@ -382,24 +398,24 @@ impl Solver for Prsa {
             let best_subpop_res = eval_best_res(&mut threads_res.get_coll(), self.energy_type);
 
 
-			let de = match self.energy_type {
+            let de = match self.energy_type {
                 EnergyType::throughput => best_subpop_res.energy - final_best_res.energy,
                 EnergyType::latency => -(best_subpop_res.energy - final_best_res.energy), 
             };
-			
+
             let range = Range::new(0.0, 1.0);
-            
+
             if de > 0.0 || range.ind_sample(&mut rng) <= (de / temperature.get()).exp() {
-                final_best_res=best_subpop_res;
+                final_best_res = best_subpop_res;
                 if de > 0.0 {
-					subsequent_rejected+=1;
+                    subsequent_rejected += 1;
                 }
 
             } else {
-				subsequent_rejected=0;		
+                subsequent_rejected = 0;
             }
 
-			
+
         }
 
 
@@ -440,7 +456,12 @@ fn get_parents(sub_population: &mut Vec<State>, mut rng: rand::ThreadRng) -> (St
     return (parent_1, parent_2);
 }
 
-fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State, mut rng: rand::ThreadRng) -> (State, State) {
+fn generate_children(
+    problem: &mut Problem,
+    parent_1: &State,
+    parent_2: &State,
+    mut rng: rand::ThreadRng,
+) -> (State, State) {
 
     // Enforce Crossover between parent_1 and parent_2 configurations
     let cutting_point = ((0.4 * parent_1.len() as f64).floor()) as usize;
@@ -467,25 +488,25 @@ fn generate_children(problem: &mut Problem, parent_1: &State, parent_2: &State, 
 
     // Enforce Uniform Mutation on Child_1: This operator replaces the value of the chosen "gene" (configuration parameter) with a
     // uniform random value selected between the upper and lower bounds for that gene (into the space state of the configuration parameter).
-    let mut keys: Vec<_> = child_1.keys()
-        .map(|arg| arg.clone())
-        .collect();
+    let mut keys: Vec<_> = child_1.keys().map(|arg| arg.clone()).collect();
 
     let keys_c = keys.clone();
     let mut random_gene = rng.choose(&keys_c).unwrap();
-    let mut gen_space_state = &problem.params_configurator.params_space_state.get(random_gene);
+    let mut gen_space_state = &problem.params_configurator.params_space_state.get(
+        random_gene,
+    );
 
     let mut new_value = rng.choose(&*gen_space_state.unwrap()).unwrap();
     *(child_1).get_mut(random_gene).unwrap() = *new_value;
 
 
     // Enforce Mutation on Child_2
-    keys = child_2.keys()
-        .map(|arg| arg.clone())
-        .collect();
+    keys = child_2.keys().map(|arg| arg.clone()).collect();
     random_gene = rng.choose(&keys).unwrap();
 
-    let mut gen_space_state_2 = &problem.params_configurator.params_space_state.get(random_gene);
+    let mut gen_space_state_2 = &problem.params_configurator.params_space_state.get(
+        random_gene,
+    );
 
     new_value = rng.choose(&*gen_space_state_2.unwrap()).unwrap();
     *(child_2).get_mut(random_gene).unwrap() = *new_value;

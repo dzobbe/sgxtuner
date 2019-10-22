@@ -1,48 +1,27 @@
 <target>
         <m1>
-		    <execution>remote</execution>
-		    <host>10.3.1.1:22</host>
-		    <user>giovanni</user>
+		    <execution>local</execution>
+		    <host></host>
+		    <user></user>
 		    <bin>redis-server</bin>
-		    <path>$HOME/scripts/build/master/bin/</path>
-		    <args>/home/giovanni/scripts/build/master/bin/redis.conf --port 12400 --bind 10.3.1.1</args>
-		    <address>10.3.1.1</address>
-		    <port>12400</port>
+		    <path>/home/fitnesslab/Development/redis-5.0.5/src/</path>
+		    <args>/home/fitnesslab/Development/redis-5.0.5/redis.conf --port 12600 --bind 127.0.0.1</args>
+		    <address>127.0.0.1</address>
+		    <port>12600</port>
 	   	</m1>
-	   	<m2>
-		    <execution>remote</execution>
-		    <host>10.3.1.2:22</host>
-		    <user>giovanni</user>
-		    <bin>redis-server</bin>
-		    <path>$HOME/scripts/build/master/bin/</path>
-		    <args>/home/giovanni/scripts/build/master/bin/redis.conf --port 12400 --bind 10.3.1.2</args>
-		    <address>10.3.1.2</address>
-		    <port>12400</port>
-	   	</m2>
-	   	<m3>
-		    <execution>remote</execution>
-		    <host>10.3.1.3:22</host>
-		    <user>giovanni</user>
-		    <bin>redis-server</bin>
-		    <path>$HOME/scripts/build/master/bin/</path>
-		    <args>/home/giovanni/scripts/build/master/bin/redis.conf --port 12400 --bind 10.3.1.3</args>
-		    <address>10.3.1.3</address>
-		    <port>12400</port>
-	   	</m3>
 </target>
-
 <bench>
 	<m1>
 	    <execution>local</execution>
 	    <host></host>
 	    <user></user>
-	    <bin>run_ycsb_bench_2.sh</bin>
-	    <path>/home/giovanni/</path>
+	    <bin>run_ycsb_bench.sh</bin>
+	    <path>/home/fitnesslab/Development/</path>
 	    <args>127.0.0.1 12600</args>
 	    <address>127.0.0.1</address>
 	    <port>12600</port>
    	</m1>
-</bench> 
+</bench>  
 
 <annealing>
     <max_step>10000</max_step>
@@ -52,8 +31,8 @@
     <energy>throughput</energy>
     <cooling>exponential</cooling>
     <problem>default</problem>
-    <version>spis</version>
-    <workers>3</workers>
+    <version>seqsea</version>
+    <workers>1</workers>
 </annealing>
 
 <musl-params>

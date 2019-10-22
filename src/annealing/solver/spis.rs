@@ -16,13 +16,13 @@
 ///  limitations under the License.
 /// ///////////////////////////////////////////////////////////////////////////
 
-/// ****************************************************************************
-/// *****************************************************************************
-/// **
-/// Simultaneous Periodically Interacting Searcher (SPIS)
-/// *
-/// *****************************************************************************
-/// ****************************************************************************
+// ****************************************************************************
+// *****************************************************************************
+// **
+// Simultaneous Periodically Interacting Searcher (SPIS)
+// *
+// *****************************************************************************
+// ****************************************************************************
 use annealing::solver::Solver;
 use annealing::problem::Problem;
 use annealing::cooler::{Cooler, StepsCooler, TimeCooler};
@@ -73,8 +73,10 @@ impl Solver for Spis {
 
 
         ("{}",Green.paint("\n-------------------------------------------------------------------------------------------------------------------"));
-        println!("{} Initialization Phase: Evaluation of Energy for Default Parameters",
-                 Green.paint("[TUNER]"));
+        println!(
+            "{} Initialization Phase: Evaluation of Energy for Default Parameters",
+            Green.paint("[TUNER]")
+        );
         println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
 
         let mut start_time = time::precise_time_ns();
@@ -93,7 +95,7 @@ impl Solver for Spis {
 
         /*   let mut perf_meter = CountersConsumer::new();
         let mut initial_counters = perf_meter.get_current_counters();*/
-        
+
         let mut cpu_time = 0.0;
         let mut elapsed_steps = common::SharedGenericCounter::new();
         let mut accepted = common::SharedGenericCounter::new();
@@ -112,21 +114,23 @@ impl Solver for Spis {
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
             match rx.recv() {
                 Ok(res) => {
-                    results_emitter.send_update(temperature_c.get(),
-                                                elapsed_time,
-                                                cpu_time,
-                                                res.last_nrg,
-                                                &res.last_state,
-                                                res.best_nrg,
-                                                &res.best_state,
-                                                elapsed_steps_c.get());
+                    results_emitter.send_update(
+                        temperature_c.get(),
+                        elapsed_time,
+                        cpu_time,
+                        res.last_nrg,
+                        &res.last_state,
+                        res.best_nrg,
+                        &res.best_state,
+                        elapsed_steps_c.get(),
+                    );
                 }
                 Err(e) => {} 
             }
         });
 
 
-        /// *********************************************************************************************************
+        // *********************************************************************************************************
         start_time = time::precise_time_ns();
         'outer: loop {
             /* let current_counters = perf_meter.get_current_counters();
@@ -153,25 +157,33 @@ impl Solver for Spis {
             elapsed_time = (time::precise_time_ns() - start_time) as f64 / 1000000000.0f64;
 
             println!("{}",Green.paint("-------------------------------------------------------------------------------------------------------------------"));
-            println!("{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
+            println!(
+                "{} Completed Steps: {:.2} - Percentage of Completion: {:.2}% - Estimated \
                       time to Complete: {:.2} Hrs",
-                     Green.paint("[TUNER]"),
-                     elapsed_steps.get(),
-                     (elapsed_steps.get() as f64 / self.max_steps as f64) * 100.0,
-                     time_2_complete_hrs as usize);
-            println!("{} Total Accepted: {:?} - Subsequent Rejected: {:?} - Current Temperature: \
+                Green.paint("[TUNER]"),
+                elapsed_steps.get(),
+                (elapsed_steps.get() as f64 / self.max_steps as f64) * 100.0,
+                time_2_complete_hrs as usize
+            );
+            println!(
+                "{} Total Accepted: {:?} - Subsequent Rejected: {:?} - Current Temperature: \
                       {:.2} - Elapsed Time: {:.2} s",
-                     Green.paint("[TUNER]"),
-                     accepted.get(),
-                     subsequent_rej.get(),
-                     temperature.get(),
-                     elapsed_time);
-            println!("{} Accepted State: {:?}",
-                     Green.paint("[TUNER]"),
-                     master_state);
-            println!("{} Accepted Energy: {:.4}",
-                     Green.paint("[TUNER]"),
-                     master_energy);
+                Green.paint("[TUNER]"),
+                accepted.get(),
+                subsequent_rej.get(),
+                temperature.get(),
+                elapsed_time
+            );
+            println!(
+                "{} Accepted State: {:?}",
+                Green.paint("[TUNER]"),
+                master_state
+            );
+            println!(
+                "{} Accepted Energy: {:.4}",
+                Green.paint("[TUNER]"),
+                master_energy
+            );
             /* println!("{} CPU Time: {:.4} - IPC: {:.4} - IPC Utilization: {:.2}% - worker_nr \
                       Utilization: {:.2}%",
                      Green.paint("[TUNER]"),
@@ -193,7 +205,7 @@ impl Solver for Spis {
 
 
 
-            /// *********************************************************************************************************
+            // *********************************************************************************************************
             let handles: Vec<_> = (0..num_workers).map(|worker_nr| {
 	 				let mut pb=mb.create_bar(neigh_pool.size()/num_workers as u64);
  			        pb.show_message = true;
@@ -214,7 +226,7 @@ impl Solver for Spis {
 					
 					//let mut pf=perf_meter.clone();
 					//let mut ic=initial_counters.clone();
-					/************************************************************************************************************/
+					//************************************************************************************************************/
 		            thread::spawn(move || {
 
   			 			
@@ -312,7 +324,7 @@ impl Solver for Spis {
             }
 
 
-            /// *********************************************************************************************************
+            // *********************************************************************************************************
 
             // Get results of worker threads (each one will put its best evaluated energy) and
             // choose between them which one will be the best

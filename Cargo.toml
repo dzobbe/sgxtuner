@@ -7,11 +7,11 @@ authors = ["Giovanni Mazzeo mazzeo.gio@gmail.com"]
 name = "annealing-tuner"
 
 [dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 time = "*"
 rustc-serialize = "0.3" 
 rand = "0.3"
 libc = "0.2.0"
-raw-cpuid = "2.0.1"
 ndarray = "0.6.8"
 lazy_static = "0.1.*"
 num = "0.1"
@@ -24,6 +24,6 @@ futures = "0.1"
 futures-cpupool = "0.1"
 tokio-core = "0.1"
 wait-timeout = "0.1"
-ssh2="0.3"
+ssh2="0.5"
 xml-rs="0.3"
 ctrlc = { version = "2.0", features = ["termination"] }

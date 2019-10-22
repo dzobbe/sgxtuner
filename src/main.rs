@@ -1,4 +1,3 @@
- #![feature(stmt_expr_attributes)]
 //extern crate x86;
 //extern crate perfcnt;
 extern crate rustc_serialize;
@@ -11,7 +10,6 @@ extern crate csv;
 extern crate hwloc;
 extern crate num_cpus;
 extern crate wait_timeout;
-extern crate raw_cpuid;
 extern crate ssh2;
 extern crate xml;
 extern crate ctrlc;
@@ -47,18 +45,6 @@ mod shared;
 type State = HashMap<String, usize>;
 
 
-/**
-The Annealing Tuner is a tool able to needs in input:
-
-	- The target app
-	- The benchmark app
-	- An initial default parameter configuration
-	- The iteration number r for random selection of initial parameter configuration
-	- Fixed number s of random moves for perturbation
-**/
-/**
-Annealing Tuner Entry Point
-**/
 fn main() {
 
 
@@ -93,9 +79,11 @@ fn main() {
 
 
 
-    let (t_min, t_max) = eval_temperature(xml_reader.ann_min_temp(),
-                                          xml_reader.ann_max_temp(),
-                                          &mut problem);
+    let (t_min, t_max) = eval_temperature(
+        xml_reader.ann_min_temp(),
+        xml_reader.ann_max_temp(),
+        &mut problem,
+    );
 
 
     let mr_result = match xml_reader.ann_version() {
@@ -108,7 +96,7 @@ fn main() {
                 cooling_schedule: xml_reader.ann_cooling(),
             };
 
-            solver.solve(&mut problem,1)
+            solver.solve(&mut problem, 1)
         }
         SolverVersion::spis => {
             let mut solver = annealing::solver::spis::Spis {
@@ -147,9 +135,11 @@ fn main() {
     };
 
     println!("{}",Yellow.paint("\n-----------------------------------------------------------------------------------------------------------------------------------------------"));
-    println!("{} {:?}",
-             Yellow.paint("The Best Configuration found is: "),
-             mr_result.state);
+    println!(
+        "{} {:?}",
+        Yellow.paint("The Best Configuration found is: "),
+        mr_result.state
+    );
     println!("{} {:?}", Yellow.paint("Energy: "), mr_result.energy);
     println!("{}",Yellow.paint("-----------------------------------------------------------------------------------------------------------------------------------------------"));
 
@@ -174,10 +164,12 @@ fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Proble
             let mut deltas: Vec<f64> = Vec::with_capacity(num_exec);
             /// Search for Tmax: a temperature that gives 98% acceptance
             /// Tmin: equal to 1.
-            println!("{} Temperature not provided. Starting its Evaluation",
-                     Green.paint("[TUNER]"));
+            println!(
+                "{} Temperature not provided. Starting its Evaluation",
+                Green.paint("[TUNER]")
+            );
             let mut state = problem.initial_state();
-            let mut energy=match problem.energy(&state, 0, rng.clone()) {
+            let mut energy = match problem.energy(&state, 0, rng.clone()) {
                 Some(nrg) => nrg,
                 None => panic!("The initial configuration does not allow to calculate the energy"),
             };
@@ -185,21 +177,23 @@ fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Proble
             for i in 0..num_exec {
 
                 let next_state = problem.rand_state();
-                let new_energy=match problem.energy(&next_state, 0, rng.clone()) {
-                    Some(new_nrg) => deltas.push((energy-new_nrg).abs()),
+                let new_energy = match problem.energy(&next_state, 0, rng.clone()) {
+                    Some(new_nrg) => deltas.push((energy - new_nrg).abs()),
                     None => {
-                        println!("{} The current configuration parameters cannot be evaluated. \
+                        println!(
+                            "{} The current configuration parameters cannot be evaluated. \
                                   Skip!",
-                                 Green.paint("[TUNER]"));
+                            Green.paint("[TUNER]")
+                        );
                     }
                 };
-                
+
             }
 
             let desired_prob: f64 = 0.98;
-            let sum_deltas: f64=deltas.iter().cloned().sum();
+            let sum_deltas: f64 = deltas.iter().cloned().sum();
             //(energies.iter().cloned().fold(0. / 0., f64::max) -energies.iter().cloned().fold(0. / 0., f64::min))
-            (sum_deltas /deltas.len() as f64)/ (-desired_prob.ln())
+            (sum_deltas / deltas.len() as f64) / (-desired_prob.ln())
         }
     };
 
@@ -210,21 +204,21 @@ fn eval_temperature(t_min: Option<f64>, t_max: Option<f64>, problem: &mut Proble
 
 
 
-#[derive(Debug, Clone,RustcDecodable)]
+#[derive(Debug, Clone, RustcDecodable)]
 pub enum ProblemType {
     default,
     rastr,
     griew,
 }
 
-#[derive(Debug, Clone,RustcDecodable)]
+#[derive(Debug, Clone, RustcDecodable)]
 pub enum CoolingSchedule {
     linear,
     exponential,
     basic_exp_cooling,
 }
 
-#[derive(Debug, Clone,RustcDecodable)]
+#[derive(Debug, Clone, RustcDecodable)]
 pub enum SolverVersion {
     seqsea,
     spis,
@@ -239,7 +233,7 @@ pub enum EnergyType {
 }
 
 
-#[derive(Debug, Clone,RustcDecodable)]
+#[derive(Debug, Clone, RustcDecodable)]
 pub enum ExecutionType {
     local,
     remote,
